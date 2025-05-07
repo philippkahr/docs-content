@@ -165,7 +165,8 @@ Because the if condition is always executed left to right and therefore when `CL
 This:
 
 ```painless
-"if": "ctx.process != null && ctx.process.thread != null && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"
+"if": "ctx.process != null && ctx.process.thread != null 
+       && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"
 ```
 
 Can become just this:
@@ -319,14 +320,14 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Rename operator
+## Rename processor
 
-The rename operator renames a field. There are two flags:
+The rename processor renames a field. There are two flags:
 
 - ignore_missing
 - ignore_failure
 
-Ignore missing is useful when you are not sure that the field you want to rename from exist. Ignore\_failure will help you with any failure encountered. The rename operator can only rename to non-existing fields. If you already have the field `abc` and you want to rename `def` to `abc` then the operation fails. The `ignore_failure` helps you in this case.
+Ignore missing is useful when you are not sure that the field you want to rename from exist. Ignore_failure will help you with any failure encountered. The rename processor can only rename to non-existing fields. If you already have the field `abc` and you want to rename `def` to `abc` then the operation fails. The `ignore_failure` helps you in this case.
 
 ## Script processor
 
