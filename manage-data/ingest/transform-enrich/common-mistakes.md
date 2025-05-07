@@ -17,7 +17,9 @@ Here we are not discussing any performance metrics and if one way or the other o
 This \== statement can be rewritten
 
 ```painless
-"if": "ctx?.kubernetes?.container?.name == 'admin' || ctx?.kubernetes?.container?.name == 'def' || ctx?.kubernetes?.container?.name == 'demo' || ctx?.kubernetes?.container?.name == 'acme' || ctx?.kubernetes?.container?.name == 'wonderful'
+"if": "ctx?.kubernetes?.container?.name == 'admin' || ctx?.kubernetes?.container?.name == 'def' 
+|| ctx?.kubernetes?.container?.name == 'demo' || ctx?.kubernetes?.container?.name == 'acme' 
+|| ctx?.kubernetes?.container?.name == 'wonderful'
 ```
 
 to the following easier maintainable and readable comprehension
@@ -35,13 +37,20 @@ The `?` work without any issue as it will be rewritten to `admin.contains(null)`
 Here is another example, which would fail if `openshift` is not properly set since it is not using `?`, also the `()` are not really doing anything. As well as the unnecessary check of `openshift.origin` and then `openshift.origin.threadId`
 
 ```painless
-"if": "ctx.openshift.eventPayload != null && (ctx.openshift.eventPayload.contains('Start expire sessions')) && ctx.openshift.origin != null && ctx.openshift.origin.threadId != null && (ctx.openshift.origin.threadId.contains('Catalina-utility'))",
+"if": "ctx.openshift.eventPayload != null 
+&& (ctx.openshift.eventPayload.contains('Start expire sessions')) 
+&& ctx.openshift.origin != null 
+&& ctx.openshift.origin.threadId != null 
+&& (ctx.openshift.origin.threadId.contains('Catalina-utility'))",
 ```
 
 This can become this:
 
 ```painless
-"if": "ctx.openshift?.eventPayload instanceof String && ctx.openshift.eventPayload.contains('Start expire sessions') && ctx.openshift?.origin?.threadId instanceof String && ctx.openshift.origin.threadId.contains('Catalina-utility')",
+"if": "ctx.openshift?.eventPayload instanceof String 
+&& ctx.openshift.eventPayload.contains('Start expire sessions') 
+&& ctx.openshift?.origin?.threadId instanceof String 
+&& ctx.openshift.origin.threadId.contains('Catalina-utility')",
 ```
 
 ### Contains operation and null check
@@ -49,13 +58,22 @@ This can become this:
 This includes an initial null check, which is not necessary.
 
 ```painless
-"if": "ctx.event?.action !=null && ['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention','tcp syn flood detection','tcp connection limiting','http rate limiting','block malformed dns traffic','tcp connection reset','udp flood detection','dns rate limiting','malformed http filtering','icmp flood detection','dns nxdomain rate limiting','invalid packets'].contains(ctx.event.action)"
+"if": "ctx.event?.action !=null 
+&& ['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention',
+    'tcp syn flood detection','tcp connection limiting','http rate limiting',
+    'block malformed dns traffic','tcp connection reset','udp flood detection',
+    'dns rate limiting','malformed http filtering','icmp flood detection',
+    'dns nxdomain rate limiting','invalid packets'].contains(ctx.event.action)"
 ```
 
 This behaves nearly the same:
 
 ```painless
-"if": "['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention','tcp syn flood detection','tcp connection limiting','http rate limiting','block malformed dns traffic','tcp connection reset','udp flood detection','dns rate limiting','malformed http filtering','icmp flood detection','dns nxdomain rate limiting','invalid packets'].contains(ctx.event?.action)"
+"if": "['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention',
+        'tcp syn flood detection','tcp connection limiting','http rate limiting',
+        'block malformed dns traffic','tcp connection reset','udp flood detection',
+        'dns rate limiting','malformed http filtering','icmp flood detection',
+        'dns nxdomain rate limiting','invalid packets'].contains(ctx.event?.action)"
 ```
 
 The difference is in the execution itself which should not matter since it is Java under the hood and pretty fast as this. In reality what happens is the following when doing the first one with the initial: `ctx.event?.action != null` If action is null, then it will exit here and not even perform the contains operation. In our second example we basically run the contains operation x times, for every item in the array and have `valueOfarray.contains('null')` then.
@@ -100,27 +118,38 @@ This version is easier to read and maintain since we remove the unnecessary null
 
 This is interesting as it misses the `?` and therefore will have a null pointer exception if `event.type` is ever null.
 
-* `"if": "ctx.event.type == null || ctx.event.type == '0'"` This needs to become this:  
-* `"if": "ctx.event?.type == null || ctx.event?.type == '0'"`
-
+```
+"if": "ctx.event.type == null || ctx.event.type == '0'"
+```
+This needs to become this:  
+```
+"if": "ctx.event?.type == null || ctx.event?.type == '0'"
+```
 The reason why we need twice the `?` is because we are using an OR operator `||` therefore both parts of the if statement are executed.
 
 ### Checking null
 
 It is not necessary to write a `?` after the ctx itself. For first level objects such as `ctx.message`, `ctx.demo` it is enough to write it like this. If ctx is ever null  you face other problems (basically the entire context, so the entire \_source is empty and there is not even a \_source... it's basically all null)
 
-* `"if": "ctx?.message == null"` Is the same as:  
-* `"if": "ctx.message == null"`
+```
+"if": "ctx?.message == null"
+```
+Is the same as:  
+```
+"if": "ctx.message == null"
+```
 
 ### Checking null multiple times
 
 This is similar to other topics discussed above already. It is often not needed to check using the `?` a 2nd time when you already walked the object / path.
 
-* `"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor?.ddos?.command_line !=null"`
-
+```
+"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor?.ddos?.command_line !=null"
+```
 Same as:
-
-* `"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor.ddos.command_line !=null"`
+```
+"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor.ddos.command_line !=null"
+```
 
 Because the if condition is always executed left to right and therefore when `CLI` fails, the 2nd part of the if condition is not triggered. This means that we already walked the `ctx.arbor.ddos` path and therefore know that this object exists.
 
@@ -128,8 +157,15 @@ Because the if condition is always executed left to right and therefore when `CL
 
 This:
 
-* `"if": "ctx.process != null && ctx.process.thread != null && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"` Can become just this:  
-* `"if": "ctx.process?.thread?.id instanceof String"`
+```
+"if": "ctx.process != null && ctx.process.thread != null && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"
+```
+
+Can become just this:  
+
+```
+"if": "ctx.process?.thread?.id instanceof String"
+```
 
 That is what the `?` is for, instead of listing every step individually and removing the unnecessary `()` as well.
 
