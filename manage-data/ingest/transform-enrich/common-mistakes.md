@@ -1,6 +1,6 @@
 ---
 mapped_pages:
-  - https://www.elastic.co/docs/manage-data/ingest/transform-enrich/common-mistakes
+  - https://www.elastic.co/docs/manage-data/ingest/transform-enrich/common-mistakes.html
 applies_to:
   stack: ga
   serverless: ga

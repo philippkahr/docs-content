@@ -1,6 +1,6 @@
 ---
 mapped_pages:
-  - https://www.elastic.co/docs/manage-data/ingest/transform-enrich/general-tips-and-tricks
+  - https://www.elastic.co/docs/manage-data/ingest/transform-enrich/general-tips-and-tricks.html
 applies_to:
   stack: ga
   serverless: ga
