@@ -10,7 +10,7 @@ applies_to:
 
 There are multiple ways to handle data and all of them produce similar results. Some might be easier for one or another. Here is some guidance to make sure that ingest pipelines are similar across all ingest tasks and are the most readable. We won’t focus too much on performance enhancements. The goal is to have an easy to read, understandable and maintainable ingest pipeline.
 
-## Accessing fields in if {#accessing-fields-in-if}
+## Accessing fields in if
 
 In an ingest pipeline within the processor context of an `if` statement there are two ways to access fields:
 
@@ -25,11 +25,11 @@ Is the same as:
 
 * `ctx['event']['action']`
 
-### **Downsides of brackets** {#downsides-of-brackets}
+### Downsides of brackets
 
 * No support for null safety operations `?`
 
-### **When to use brackets** {#when-to-use-brackets}
+### When to use brackets
 
 When you have special characters such as `@` in the field name, or a `.` in the field name. As an example:
 
@@ -57,7 +57,7 @@ But it will error if object is `null`. To be a 100% on the safe side you need to
 
 * `ctx.my?.nested?.object != null && ctx.my.nested.object['has@!%&chars'] == ...`
 
-## Accessing fields in a script {#accessing-fields-in-a-script}
+## Accessing fields in a script
 
 Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline\! Take the following input:
 
@@ -111,7 +111,7 @@ script: {
 }
 ```
 
-## Check if a value exists and is not null {#check-if-a-value-exists-and-is-not-null}
+## Check if a value exists and is not null
 
 In simplest case the `ignore_empty_value` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](https://www.elastic.co/guide/en/elasticsearch/painless/current/painless-operators-reference.html#null-safe-operator) to check if a field exists and is not `null`.
 
@@ -180,7 +180,7 @@ Most safest and secure option is to write:
 
 The reason for that is, if `event.category`  is a number, object or anything other than a `String` then it does not have the `startsWith` function and therefore will error with function `startsWith` not available on type object.
 
-## Check if a key is in a document {#check-if-a-key-is-in-a-document}
+## Check if a key is in a document
 
 The `containsKey` can be used to check if a map contains a specific key.
 
@@ -213,7 +213,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Remove empty fields or remove empty fields that match a regular expression {#remove-empty-fields-or-remove-empty-fields-that-match-a-regular-expression}
+## Remove empty fields or remove empty fields that match a regular expression
 
 Alex and Honza created a [blog post](https://alexmarquardt.com/2020/11/06/using-elasticsearch-painless-scripting-to-iterate-through-fields/) presenting painless scripts that remove empty fields or fields that match a regular expression. We are already using this in a lot of places. Most of the time in the custom pipeline and in the final pipeline as well.
 
@@ -285,7 +285,7 @@ PUT _ingest/pipeline/remove_unwanted_keys
 }
 ```
 
-## Type check of fields in ingest pipelines {#type-check-of-fields-in-ingest-pipelines}
+## Type check of fields in ingest pipelines
 
 If it is required to check the type of a field, this can be done via the Painless method instanceof
 
@@ -319,7 +319,7 @@ POST _ingest/pipeline/_simulate
 
 Yes the `instanceof` also works with the `?` operator.
 
-## Calculate time in other timezone {#calculate-time-in-other-timezone}
+## Calculate time in other timezone
 
 When you cannot use the date and its timezone parameter, you can use `datetime` in Painless
 
@@ -350,7 +350,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Work with JSON as value of fields {#work-with-json-as-value-of-fields}
+## Work with JSON as value of fields
 
 It is possible to work with json string as value of a field for example to set the `original` field value with the json of `_source`: We are leveraging a `mustache`  function here.
 
@@ -378,9 +378,9 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Script Processor {#script-processor}
+## Script Processor
 
-### **Setting the value of a field** {#setting-the-value-of-a-field}
+### Setting the value of a field
 
 Sometimes it is needed to write to a field and this field does not exist yet. Whenever the object above it exists, this can be done immediately.
 
@@ -428,7 +428,7 @@ ctx.user.putIfAbsent("geo", [:]);
 ctx.user.geo = "Amsterdam"
 ```
 
-## Remove fields based on their values {#remove-fields-based-on-their-values}
+## Remove fields based on their values
 
 When `ignore_malformed`,  null or other mapping parameters are not sufficient, you can use a script like this:
 
@@ -444,7 +444,7 @@ When `ignore_malformed`,  null or other mapping parameters are not sufficient, y
       ctx?.sophos?.xg.entrySet().removeIf(entry -> params.values.contains(entry.getValue()));
 ```
 
-## GROK vs Dissects {#grok-vs-dissects}
+## GROK vs Dissects
 
 There can be a very long discussion on whether to choose GROK or dissects. When to choose what, depends on a lot of factors and existing knowledge. Dissects are easier to understand and follow, but are limited in their use. The log should look fairly the same all the times, as opposed to grok which can deal with a lot of different tasks, like optional fields in various positions.
 

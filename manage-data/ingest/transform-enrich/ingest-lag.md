@@ -6,11 +6,9 @@ applies_to:
   serverless: ga
 ---
 
-# Ingest lag {#ingest-lag}
+# Ingest lag
 
 This is a recurring topic and theme and deserves its own heading. The idea is always the same, calculate the time it takes from reading a document, until you receive it in Elasticsearch. Store that in minutes, seconds, milliseconds, and use it to quickly graph and alert on.
-
-## General {#general}
 
 The generally working idea is the following: `event.ingested - @timestamp`
 
@@ -43,7 +41,7 @@ The following script is the main magic and the minimum you should implement. It 
 }
 ```
 
-## @timestamp {#@timestamp}
+## @timestamp
 
 One key important aspect is that `@timestamp` can either be the document when Elastic Agent has read the document, or the real timestamp out of the document, after it has been parsed. The main culprit here is that this is not always the same, because when Elastic Agent reads Windows event logs, it will already set the @`timestamp` based on the log. It just doesn’t do it for everything, e.g. syslog, or reading Linux log files.
 
@@ -76,11 +74,11 @@ In the following example above, we can tell that the timestamp, this is when Ela
 
 We can’t always solve all the issues, sometimes we get to a good enough situation with the above and simply saying `@timestamp` is good, since we expect Elastic Agent to pick up the log as fast as possible anyway. In the beginning and onboarding process of new data sources, the latency might be higher, since we might read in old data.
 
-## Architectures {#architectures}
+## Architectures
 
 Regardless of the chosen architecture it is a good idea to add a `remove` processor at the end that drops the `_tmp` field. You don’t need the raw timestamps from the various hops, the latency in seconds should be enough.
 
-### **Elastic Agent \=\> Elasticsearch** {#elastic-agent-=>-elasticsearch}
+### Elastic Agent \=\> Elasticsearch
 
 We can use `@timestamp` and `event.ingested` and calculate the difference. This will give you the following document. The `event.ingestion.latency` is in seconds.
 
@@ -94,7 +92,7 @@ We can use `@timestamp` and `event.ingested` and calculate the difference. This 
 }
 ```
 
-#### Script {#script}
+#### Script
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -128,7 +126,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### **Elastic Agent \=\> Logstash \=\> Elasticsearch** {#elastic-agent-=>-logstash-=>-elasticsearch}
+### Elastic Agent \=\> Logstash \=\> Elasticsearch
 
 In this case we have an additional hop that we need to manage. We know that Elastic Agent populates the `@timestamp`. Logstash does not add any timestamp per default, we would recommend adding a temporary timestamp (simply adding it to `_tmp.logstash_seen`). You can calculate the following values:
 
@@ -152,7 +150,7 @@ Below is a script that will generate the following values. This will calculate t
 }
 ```
 
-#### Script {#script-1}
+#### Script
 
 If you want to remove the first calculation, you will need to ensure that the object `event.ingestion` is available.
 
@@ -209,7 +207,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### **Elastic Agent \=\> Logstash \=\> Kafka \=\> Logstash \=\> Elasticsearch** {#elastic-agent-=>-logstash-=>-kafka-=>-logstash-=>-elasticsearch}
+### Elastic Agent \=\> Logstash \=\> Kafka \=\> Logstash \=\> Elasticsearch
 
 Similar to the story above, we add an additional hop and therefore the recommendation is to add an additional temporary timestamp field. Please read the above `Elastic Agent => Logstash => Elasticsearch` heading for more insights.
 
@@ -228,7 +226,7 @@ Below is a script that will generate the following values. This will calculate t
 }
 ```
 
-#### Script {#script-2}
+#### Script
 
 If you want to remove the first calculation, you will need to ensure that the object `event.ingestion` is available. Of course you could merge all of the steps into one larger script. I personally like to separate it, so you can edit, modify and enhance exactly what you need.
 

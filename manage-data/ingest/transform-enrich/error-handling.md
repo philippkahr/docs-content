@@ -6,13 +6,13 @@ applies_to:
   serverless: ga
 ---
 
-# Error handling {#error-handling}
+# Error handling
 
 **Important**: Ingest pipelines are executed before the document is indexed by Elasticsearch. You can handle the errors occurring while processing the document (ie transforming the json object) but not the errors triggered while indexing like mapping conflict, incorrect right in the index. **Recommendation** create a `error-handling-pipeline` which sets the `event.kind` to `pipeline_error` and puts the error with the tag from the processor into the `error.message` field. A tag is very useful especially if you have multiple grok, dissects, script processors and you cannot identify where it broke.
 
 The `on_failure` can be set on a per processor or a per pipeline basis to catch the exceptions that could be raised during the processing of the document in the pipeline and its processors. The `ignore_failure` allow to not take into account errors in a specific processor.
 
-## Global vs processor specific {#global-vs-processor-specific}
+## Global vs processor specific
 
 Here is an example pipeline that leverages the `on_failure` handler on the pipeline level and not directly at the processor. This has a few caveats as it ensure that the pipeline exists safely, but it will not process further. In our case somebody made a typo when configuring the `dissect` processor to extract the `user.name` out of the message. Instead of a `:` it is a `,`.
 

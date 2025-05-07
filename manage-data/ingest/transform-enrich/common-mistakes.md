@@ -6,13 +6,13 @@ applies_to:
   serverless: ga
 ---
 
-# Common "mistakes" {#common-"mistakes"}
+# Common "mistakes"
 
 Here we are not discussing any performance metrics and if one way or the other one is faster, has less heap usage etc. What we are looking for is ease of maintenance and readability. Anybody who knows a bit about ingest pipelines should be able to fix a lot of issues. This section should provide a clear guide to “oh I have written this myself, ah that is the easier way to write it”.
 
-## if statements {#if-statements}
+## if statements
 
-### **Contains and lots of ORs** {#contains-and-lots-of-ors}
+### Contains and lots of ORs
 
 This \== statement can be rewritten
 
@@ -30,7 +30,7 @@ The big implication here is that now the value `admin.contains('admin')` is exec
 
 The `?` work without any issue as it will be rewritten to `admin.contains(null)`.
 
-### **Missing ? and contains operation** {#missing-?-and-contains-operation}
+### Missing ? and contains operation
 
 Here is another example, which would fail if `openshift` is not properly set since it is not using `?`, also the `()` are not really doing anything. As well as the unnecessary check of `openshift.origin` and then `openshift.origin.threadId`
 
@@ -44,7 +44,7 @@ This can become this:
 "if": "ctx.openshift?.eventPayload instanceof String && ctx.openshift.eventPayload.contains('Start expire sessions') && ctx.openshift?.origin?.threadId instanceof String && ctx.openshift.origin.threadId.contains('Catalina-utility')",
 ```
 
-### **Contains operation and null check** {#contains-operation-and-null-check}
+### Contains operation and null check
 
 This includes an initial null check, which is not necessary.
 
@@ -60,7 +60,7 @@ This behaves nearly the same:
 
 The difference is in the execution itself which should not matter since it is Java under the hood and pretty fast as this. In reality what happens is the following when doing the first one with the initial: `ctx.event?.action != null` If action is null, then it will exit here and not even perform the contains operation. In our second example we basically run the contains operation x times, for every item in the array and have `valueOfarray.contains('null')` then.
 
-### **Checking null and type unnecessarily** {#checking-null-and-type-unnecessarily}
+### Checking null and type unnecessarily
 
 This is just unnecessary
 
@@ -96,7 +96,7 @@ This version is easier to read and maintain since we remove the unnecessary null
 },
 ```
 
-### **Checking null and for a value** {#checking-null-and-for-a-value}
+### Checking null and for a value
 
 This is interesting as it misses the `?` and therefore will have a null pointer exception if `event.type` is ever null.
 
@@ -105,14 +105,14 @@ This is interesting as it misses the `?` and therefore will have a null pointer 
 
 The reason why we need twice the `?` is because we are using an OR operator `||` therefore both parts of the if statement are executed.
 
-### **Checking null** {#checking-null}
+### Checking null
 
 It is not necessary to write a `?` after the ctx itself. For first level objects such as `ctx.message`, `ctx.demo` it is enough to write it like this. If ctx is ever null  you face other problems (basically the entire context, so the entire \_source is empty and there is not even a \_source... it's basically all null)
 
 * `"if": "ctx?.message == null"` Is the same as:  
 * `"if": "ctx.message == null"`
 
-### **Checking null multiple times** {#checking-null-multiple-times}
+### Checking null multiple times
 
 This is similar to other topics discussed above already. It is often not needed to check using the `?` a 2nd time when you already walked the object / path.
 
@@ -124,7 +124,7 @@ Same as:
 
 Because the if condition is always executed left to right and therefore when `CLI` fails, the 2nd part of the if condition is not triggered. This means that we already walked the `ctx.arbor.ddos` path and therefore know that this object exists.
 
-### **Checking null way to often** {#checking-null-way-to-often}
+### Checking null way to often
 
 This:
 
@@ -133,7 +133,7 @@ This:
 
 That is what the `?` is for, instead of listing every step individually and removing the unnecessary `()` as well.
 
-### **Checking emptiness** {#checking-emptiness}
+### Checking emptiness
 
 This:
 
@@ -206,7 +206,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Going from mb,gb values to bytes {#going-from-mb,gb-values-to-bytes}
+## Going from mb,gb values to bytes
 
 We recommend to store everything as bytes in Elastic in `long` and then use the advanced formatting in Kibana Data View to render the bytes to human readable.
 
@@ -268,7 +268,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Rename operator {#rename-operator}
+## Rename operator
 
 The rename operator renames a field. There are two flags:
 
@@ -277,11 +277,11 @@ The rename operator renames a field. There are two flags:
 
 Ignore missing is useful when you are not sure that the field you want to rename from exist. Ignore\_failure will help you with any failure encountered. The rename operator can only rename to non-existing fields. If you already have the field `abc` and you want to rename `def` to `abc` then the operation fails. The `ignore_failure` helps you in this case.
 
-## Script processors {#script-processors}
+## Script processor
 
 Sometimes we have to fallback to script processors.
 
-### **Calculating event.duration in a complex manner** {#calculating-event.duration-in-a-complex-manner}
+### Calculating event.duration in a complex manner
 
 There are many things wrong:
 
@@ -339,7 +339,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Unnecessary complex script to stitch together IP {#unnecessary-complex-script-to-stitch-together-ip}
+## Unnecessary complex script to stitch together IP
 
 * No check if destination is available as object  
 * Using square brackets for accessing  
@@ -389,7 +389,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Removing of @timestamp {#removing-of-@timestamp}
+## Removing of @timestamp
 
 I encountered this bit:
 
@@ -423,9 +423,9 @@ I encountered this bit:
 
 The removal is completely unnecessary. The date processor always overwrites the value in `@timestamp` unless you specify the target field.
 
-## Mustache tips and tricks {#mustache-tips-and-tricks}
+## Mustache tips and tricks
 
-### Accessing values in an array {#accessing-values-in-an-array}
+### Accessing values in an array
 
 Using the `.index` in this case accessing the first value in the array can be done with `.0`
 
