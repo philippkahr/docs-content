@@ -6,25 +6,29 @@ applies_to:
   serverless: ga
 ---
 
-# Ingest lag
+# Ingest Lag
 
-This is a recurring topic and theme and deserves its own heading. The idea is always the same, calculate the time it takes from reading a document, until you receive it in Elasticsearch. Store that in minutes, seconds, milliseconds, and use it to quickly graph and alert on.
+Ingest lag is a recurring topic that deserves its own section. The goal is simple: calculate the time it takes from when a document is read to when it is received by Elasticsearch. Store this value in minutes, seconds, or milliseconds, and use it to create visualizations and alerts.
 
-The generally working idea is the following: `event.ingested - @timestamp`
+The basic calculation is:
 
-The `event.ingested` is available in two ways:
+`event.ingested - @timestamp`
 
-- `_ingest.timestamp`
+## Understanding `event.ingested`
 
-Available using mustache notation `{{_ingest.timestamp}}` in all processors except script.
+The `event.ingested` timestamp can be obtained in two ways:
+
+- `_ingest.timestamp`  
+  Available via mustache notation `{{_ingest.timestamp}}` in all processors except `script`.
 
 - `metadata().now`
+  Available only in the `script` processor. Use this instead of `_ingest.timestamp` when working with scripts.
 
-Available only in the script processor. Use it instead of `_ingest.timestamp`
+Note that `event.ingested` is typically set in the **Fleet final pipeline**, which runs as the last step in the ingest process. Calculating the latency in **seconds** is usually sufficient for most use cases.
 
-The `event.ingested` will be set in the `fleet final pipeline` but that one runs at the latest possible time. The calculation in `SECONDS` is usually granular enough.
+## Calculating Ingestion Latency
 
-The following script is the main magic and the minimum you should implement. It will create a new field called `event.ingestion.latency` and you can leverage that to see the full progress.
+The following script is the core of the solution. It creates a new field, `event.ingestion.latency`, which you can use to monitor ingestion performance across your pipelines.
 
 ```json
 {
@@ -43,9 +47,11 @@ The following script is the main magic and the minimum you should implement. It 
 
 ## @timestamp
 
-One key important aspect is that `@timestamp` can either be the document when Elastic Agent has read the document, or the real timestamp out of the document, after it has been parsed. The main culprit here is that this is not always the same, because when Elastic Agent reads Windows event logs, it will already set the @`timestamp` based on the log. It just doesn’t do it for everything, e.g. syslog, or reading Linux log files.
+One important detail to keep in mind: the value of `@timestamp` can vary depending on the data source. It might represent the time the Elastic Agent read the document, or it might be the actual timestamp extracted from the document itself after parsing.
 
-Here is an example of how this can be good and bad at the same time.
+This distinction is crucial because it affects how ingest lag is calculated. For example, when Elastic Agent reads Windows Event Logs, it sets `@timestamp` based on the log's original timestamp. However, this behavior does not apply to all sources—such as syslog messages or Linux log files—where `@timestamp` is often set later in the pipeline, after parsing.
+
+This inconsistency can lead to inaccurate latency measurements if not accounted for.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -63,22 +69,22 @@ POST _ingest/pipeline/_simulate
             "source": """
               ZonedDateTime start = ZonedDateTime.parse(ctx['@timestamp']);
               ctx.latency= ChronoUnit.SECONDS.between(start, metadata().now);
-                """
+            """
           }}
         ]
     }
 }
 ```
 
-In the following example above, we can tell that the timestamp, this is when Elastic Agent read the document is `3rd April at 10:00` and the log message on the disk is from 3rd March. When we do the `diff` at the very first step, before any parsing we can be sure that this will be proper. When we execute our calculation as the last step in the pipeline (usually what is happening with Elastic Integrations leveraging `@custom` pipelines), then the date `2025-03-01` becomes the `@timestamp` and the latency calculation will be erroneous.
+In the example above, we can see that the timestamp, when the Elastic Agent read the document was `3rd April at 10:00`, while the actual log message on the disk is from `3rd March`. If we calculate the difference at the first step, before any parsing, we can be confident that the result will be accurate. However, if we perform the calculation as the final step in the pipeline (which is typically the case with Elastic Integrations that use `@custom` pipelines), the timestamp of `2025-03-01` will be used as `@timestamp`, leading to an erroneous latency calculation.
 
-We can’t always solve all the issues, sometimes we get to a good enough situation with the above and simply saying `@timestamp` is good, since we expect Elastic Agent to pick up the log as fast as possible anyway. In the beginning and onboarding process of new data sources, the latency might be higher, since we might read in old data.
+While we can't always resolve every situation, the approach described above usually results in a "good enough" solution. For many use cases, simply using `@timestamp` is sufficient, as we expect the Elastic Agent to pick up logs as quickly as possible. During the initial onboarding of new data sources, there might be higher latency due to the ingestion of historical or older data.
 
 ## Architectures
 
-Regardless of the chosen architecture it is a good idea to add a `remove` processor at the end that drops the `_tmp` field. You don’t need the raw timestamps from the various hops, the latency in seconds should be enough.
+Regardless of the chosen architecture, it's a good practice to add a `remove` processor at the end of the pipeline to drop the `_tmp` field. The raw timestamps from the various processing steps are not needed, as the latency in seconds should be sufficient. For additional pipeline architectures, refer to the [Ingest Architectures](../ingest-reference-architectures.md) documentation.
 
-### Elastic Agent \=\> Elasticsearch
+### Elastic Agent => Elasticsearch
 
 We can use `@timestamp` and `event.ingested` and calculate the difference. This will give you the following document. The `event.ingestion.latency` is in seconds.
 
@@ -126,17 +132,17 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### Elastic Agent \=\> Logstash \=\> Elasticsearch
+### Elastic Agent => Logstash => Elasticsearch
 
-In this case we have an additional hop that we need to manage. We know that Elastic Agent populates the `@timestamp`. Logstash does not add any timestamp per default, we would recommend adding a temporary timestamp (simply adding it to `_tmp.logstash_seen`). You can calculate the following values:
+In this scenario, we have an additional hop to manage. Elastic Agent populates the `@timestamp`, but Logstash does not add any timestamp by default. We recommend adding a temporary timestamp, for example by setting `_tmp.logstash_seen`. With this, you can calculate the following latency values:
 
-- Total latency (@timestamp \- event.ingested)
-- Elastic Agent \=\> Logstash (@timestamp \- \_tmp.logstash_seen)
-- Logstash \=\> Elasticsearch (\_tmp.logstash_seen \- event.ingested)
+- Total latency: (`@timestamp - event.ingested`)
+- Elastic Agent => Logstash: (`@timestamp - _tmp.logstash_seen`)
+- Logstash => Elasticsearch: (`_tmp.logstash_seen - event.ingested`)
 
-Those values can be useful in any debugging scenario, as you can quickly tell where the lag is created. Is Elastic Agent to Logstash slow, or is Logstash to Elasticsearch slow.
+These values can be especially helpful for debugging, as they allow you to quickly determine where the lag is introduced. Is the delay caused by the transfer from Elastic Agent to Logstash, or from Logstash to Elasticsearch?
 
-Below is a script that will generate the following values. This will calculate the difference for all the different parts as explained above.
+Below is a script that calculates these differences, providing latency values for each of the stages mentioned above.
 
 ```json
 {
@@ -207,21 +213,21 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### Elastic Agent \=\> Logstash \=\> Kafka \=\> Logstash \=\> Elasticsearch
+### Elastic Agent => Logstash => Kafka => Logstash => Elasticsearch
 
-Similar to the story above, we add an additional hop and therefore the recommendation is to add an additional temporary timestamp field. Please read the above `Elastic Agent => Logstash => Elasticsearch` heading for more insights.
+As with the previous scenario, adding an additional hop introduces another point where latency can occur. The recommendation here is to add another temporary timestamp field. For more details, refer to the [Elastic Agent => Logstash => Elasticsearch](#elastic-agent--logstash--elasticsearch) section above.
 
-Below is a script that will generate the following values. This will calculate the difference for all the different steps.
+Below is a script that calculates the latency for each step in the pipeline. The following values will be generated:
 
 ```json
 {
   "event": {
     "ingestion": {
-            "latency_logstash_to_elasticsearch": 443091,
-            "latency_logstash_to_logstash": 1,
-            "latency": 443093,
-            "latency_elastic_agent_to_logstash": 1
-      }
+      "latency_logstash_to_elasticsearch": 443091,
+      "latency_logstash_to_logstash": 1,
+      "latency": 443093,
+      "latency_elastic_agent_to_logstash": 1
+    }
   }
 }
 ```

@@ -8,13 +8,24 @@ applies_to:
 
 # Error handling
 
-**Important**: Ingest pipelines are executed before the document is indexed by Elasticsearch. You can handle the errors occurring while processing the document (ie transforming the json object) but not the errors triggered while indexing like mapping conflict, incorrect right in the index. **Recommendation** create a `error-handling-pipeline` which sets the `event.kind` to `pipeline_error` and puts the error with the tag from the processor into the `error.message` field. A tag is very useful especially if you have multiple grok, dissects, script processors and you cannot identify where it broke.
+Ingest pipelines in Elasticsearch are powerful tools for transforming and enriching data before indexing. However, errors can occur during processing. This guide outlines strategies for handling such errors effectively.
 
-The `on_failure` can be set on a per processor or a per pipeline basis to catch the exceptions that could be raised during the processing of the document in the pipeline and its processors. The `ignore_failure` allow to not take into account errors in a specific processor.
+**Important**: Ingest pipelines are executed before the document is indexed by Elasticsearch. You can handle the errors occurring while processing the document (i.e. transforming the json object) but not the errors triggered while indexing like mapping conflict. For this is the Elasticsearch Failure Store.
 
-## Global vs processor specific
+Errors in ingest pipelines typically fall into the following categories:
 
-Here is an example pipeline that leverages the `on_failure` handler on the pipeline level and not directly at the processor. This has a few caveats as it ensure that the pipeline exists safely, but it will not process further. In our case somebody made a typo when configuring the `dissect` processor to extract the `user.name` out of the message. Instead of a `:` it is a `,`.
+* Parsing Errors: Occur when a processor fails to parse a field, such as a date or number.
+* Missing Fields: Happen when a required field is absent in the document.
+
+**Recommendation**: Create an `error-handling-pipeline` that sets `event.kind` to `pipeline_error` and stores the error message, along with the tag from the failed processor, in the `error.message` field. Including a tag is especially helpful when using multiple `grok`, `dissect`, or `script` processors, as it helps identify which one caused the failure.
+
+The `on_failure` parameter can be defined either for individual processors or at the pipeline level to catch exceptions that may occur during document processing. The `ignore_failure` option allows a specific processor to silently skip errors without affecting the rest of the pipeline.
+
+## Global vs. Processor-Specific
+
+The following example demonstrates how to use the `on_failure` handler at the pipeline level rather than within individual processors. While this approach ensures the pipeline exits gracefully on failure, it also means that processing stops at the point of error.
+
+In this example, a typo was made in the configuration of the `dissect` processor intended to extract `user.name` from the message. A comma (`,`) was used instead of the correct colon (`:`).
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -61,7 +72,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-The second processor with the `event.category` setting to `authentication` is not executed anymore, as the first dissect errors and the global `on_failure` is triggered. The document is now this. We can see the processor that errored, what pattern was tried and what the passed argument was.
+The second processor, which sets `event.category` to `authentication`, is no longer executed because the first `dissect` processor fails and triggers the global `on_failure` handler. The resulting document shows which processor caused the error, the pattern it attempted to apply, and the input it received.
 
 ```json
 "@timestamp": "2025-04-03T10:00:00.000Z",
@@ -74,7 +85,11 @@ The second processor with the `event.category` setting to `authentication` is no
 }
 ```
 
-We can restructure this and include the same values on the processor itself, which results in the document being calculated and the `event.category` being executed. We have the global setting, for when any other subsequent processor errors and at the same time the processor specific. (The execution of the two set operators in the dissect might not make the most sense). For the dissect you might want to add a specific `_tmp.error: dissect_failure` and leveraging `if` conditions further down you can execute certain processors only when the parsing failed.
+We can restructure the pipeline by moving the `on_failure` handling directly into the processor itself. This allows the pipeline to continue execution. In this case, the `event.category` processor still runs. You can also retain the global `on_failure` to handle errors from other processors, while adding processor-specific error handling where needed.
+
+(While executing two `set` processors within the `dissect` error handler may not always be ideal, it serves as a demonstration.)
+
+For the `dissect` processor, consider setting a temporary field like `_tmp.error: dissect_failure`. You can then use `if` conditions in later processors to execute them only if parsing failed, allowing for more controlled and flexible error handling.
 
 ```json
 POST _ingest/pipeline/_simulate

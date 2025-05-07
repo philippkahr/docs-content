@@ -6,7 +6,7 @@ applies_to:
   serverless: ga
 ---
 
-# Common "mistakes"
+# Common mistakes
 
 Here we are not discussing any performance metrics and if one way or the other one is faster, has less heap usage etc. What we are looking for is ease of maintenance and readability. Anybody who knows a bit about ingest pipelines should be able to fix a lot of issues. This section should provide a clear guide to “oh I have written this myself, ah that is the easier way to write it”.
 
@@ -28,7 +28,7 @@ to the following easier maintainable and readable comprehension
 ["admin","def", ...].contains(ctx.kubernetes?.container?.name)
 ```
 
-The big implication here is that now the value `admin.contains('admin')` is executed. So if you only want to partially match because your data is `demo-admin-demo`  then you still need to write: `ctx.kubernetes.container.name.contains('admin') ||...`
+The big implication here is that now the value `admin.contains('admin')` is executed. So if you only want to partially match because your data is `demo-admin-demo` then you still need to write: `ctx.kubernetes.container.name.contains('admin') ||...`
 
 The `?` work without any issue as it will be rewritten to `admin.contains(null)`.
 
@@ -118,24 +118,29 @@ This version is easier to read and maintain since we remove the unnecessary null
 
 This is interesting as it misses the `?` and therefore will have a null pointer exception if `event.type` is ever null.
 
-```
+```painless
 "if": "ctx.event.type == null || ctx.event.type == '0'"
 ```
-This needs to become this:  
-```
+
+This needs to become this:
+
+```painless
 "if": "ctx.event?.type == null || ctx.event?.type == '0'"
 ```
+
 The reason why we need twice the `?` is because we are using an OR operator `||` therefore both parts of the if statement are executed.
 
 ### Checking null
 
-It is not necessary to write a `?` after the ctx itself. For first level objects such as `ctx.message`, `ctx.demo` it is enough to write it like this. If ctx is ever null  you face other problems (basically the entire context, so the entire \_source is empty and there is not even a \_source... it's basically all null)
+It is not necessary to write a `?` after the ctx itself. For first level objects such as `ctx.message`, `ctx.demo` it is enough to write it like this. If ctx is ever null you face other problems (basically the entire context, so the entire `_source` is empty and there is not even a _source... it's basically all null)
 
-```
+```painless
 "if": "ctx?.message == null"
 ```
-Is the same as:  
-```
+
+Is the same as:
+
+```painless
 "if": "ctx.message == null"
 ```
 
@@ -143,11 +148,13 @@ Is the same as:
 
 This is similar to other topics discussed above already. It is often not needed to check using the `?` a 2nd time when you already walked the object / path.
 
-```
+```painless
 "if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor?.ddos?.command_line !=null"
 ```
+
 Same as:
-```
+
+```painless
 "if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor.ddos.command_line !=null"
 ```
 
@@ -157,13 +164,13 @@ Because the if condition is always executed left to right and therefore when `CL
 
 This:
 
-```
+```painless
 "if": "ctx.process != null && ctx.process.thread != null && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"
 ```
 
-Can become just this:  
+Can become just this:
 
-```
+```painless
 "if": "ctx.process?.thread?.id instanceof String"
 ```
 
@@ -173,19 +180,27 @@ That is what the `?` is for, instead of listing every step individually and remo
 
 This:
 
-* `"if": "ctx?.user?.geo?.region != null && ctx?.user?.geo?.region != ''"`
+```painless
+"if": "ctx?.user?.geo?.region != null && ctx?.user?.geo?.region != ''"
+```
 
 Is the same as this. You do not need to write in the second && clause the ? anymore. Since you already proven that this is not null.
 
-* `"if": "ctx.user?.geo?.region != null && ctx.user.geo.region != ''"`
+```painless
+"if": "ctx.user?.geo?.region != null && ctx.user.geo.region != ''"
+```
 
 Alternatively you can use (elvis, but if geo.region is a number/object, anything else than a String, you have a problem)
 
-* `"if": "ctx.user?.geo?.region?.isEmpty() ?: false"`
+```painless
+"if": "ctx.user?.geo?.region?.isEmpty() ?: false"
+```
 
 Alternatively you can use:
 
-* `"if": "ctx.user?.geo?.region instanceof String && ctx.user.geo.region.isEmpty() == false"`
+```painless
+"if": "ctx.user?.geo?.region instanceof String && ctx.user.geo.region.isEmpty() == false"
+```
 
 Here is a full reproducible example:
 
@@ -308,8 +323,8 @@ POST _ingest/pipeline/_simulate
 
 The rename operator renames a field. There are two flags:
 
-* ignore\_missing  
-* ignore\_failure
+- ignore_missing
+- ignore_failure
 
 Ignore missing is useful when you are not sure that the field you want to rename from exist. Ignore\_failure will help you with any failure encountered. The rename operator can only rename to non-existing fields. If you already have the field `abc` and you want to rename `def` to `abc` then the operation fails. The `ignore_failure` helps you in this case.
 
@@ -321,11 +336,11 @@ Sometimes we have to fallback to script processors.
 
 There are many things wrong:
 
-* Square bracket access for fields.  
-* Unnecessary if statement with multiple \!=  null statements instead of ?  usage.  
-* SubString parsing instead of using DateTime features.  
-* Event.duration is directly accessed without checking if event is even available.  
-* Event.duration is wrong, this gives milliseconds. `Event.duration` should be in Nanoseconds.
+- Square bracket access for fields.
+- Unnecessary if statement with multiple `!=` null statements instead of `?` usage.
+- SubString parsing instead of using DateTime features.
+- Event.duration is directly accessed without checking if event is even available.
+- Event.duration is wrong, this gives milliseconds. `Event.duration` should be in Nanoseconds.
 
 ```json
 {
@@ -341,7 +356,7 @@ There are many things wrong:
 
 This becomes this.
 
-We use the if condition to ensure that ctx.event  is available. The \[:\]  is a shorthand to writing ctx.event \= New HashMap();  We leverage the DateTimeFormatter and the LocalTime and use a builtin function to calculate the NanoOfDay.
+We use the if condition to ensure that `ctx.event` is available. The `[:]` is a shorthand to writing `ctx.event = New HashMap();`. We leverage the `DateTimeFormatter` and the `LocalTime` and use a builtin function to calculate the `NanoOfDay`.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -377,10 +392,10 @@ POST _ingest/pipeline/_simulate
 
 ## Unnecessary complex script to stitch together IP
 
-* No check if destination is available as object  
-* Using square brackets for accessing  
-* Unnecessary casting to Integer, we parse it as a String later anyway, so doesn't really matter.  
-* unnecessary allocation of additional field String ip , we can set the ctx. directly.
+- No check if destination is available as object
+- Using square brackets for accessing
+- Unnecessary casting to Integer, we parse it as a String later anyway, so doesn't really matter.
+- Unnecessary allocation of additional field String ip , we can set the ctx. directly.
 
 ```json
 {
