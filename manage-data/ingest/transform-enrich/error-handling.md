@@ -48,7 +48,7 @@ POST _ingest/pipeline/_simulate
         }
       },
       {
-        "set": {
+        "append": {
           "field": "event.category",
           "value": "authentication"
         }
@@ -62,7 +62,7 @@ POST _ingest/pipeline/_simulate
         }
       },
       {
-        "set": {
+        "append": {
           "field": "error.message",
           "value": "Processor {{ _ingest.on_failure_processor_type }} with tag {{ _ingest.on_failure_processor_tag }} in pipeline {{ _ingest.on_failure_pipeline }} failed with message: {{ _ingest.on_failure_message }}"
         }
@@ -116,7 +116,7 @@ POST _ingest/pipeline/_simulate
               }
             },
             {
-              "set": {
+              "append": {
                 "field": "error.message",
                 "value": "Processor {{ _ingest.on_failure_processor_type }} with tag {{ _ingest.on_failure_processor_tag }} in pipeline {{ _ingest.on_failure_pipeline }} failed with message: {{ _ingest.on_failure_message }}"
               }
@@ -126,7 +126,7 @@ POST _ingest/pipeline/_simulate
         }
       },
       {
-        "set": {
+        "append": {
           "field": "event.category",
           "value": "authentication"
         }
