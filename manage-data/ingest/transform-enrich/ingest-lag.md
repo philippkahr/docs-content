@@ -84,6 +84,14 @@ While we can't always resolve every situation, the approach described above usua
 
 Regardless of the chosen architecture, it's a good practice to add a `remove` processor at the end of the pipeline to drop the `_tmp` field. The raw timestamps from the various processing steps are not needed, as the latency in seconds should be sufficient. For additional pipeline architectures, refer to the [Ingest Architectures](../ingest-reference-architectures.md) documentation.
 
+## Logstash
+When Logstash is the mix we want to add a timestamp, this can only be done by using Ruby and the simplest form is this:
+```
+ruby {
+  code => "event.set('@timestamp', Time.now());"
+}
+```
+
 ### Elastic Agent => Elasticsearch
 
 We can use `@timestamp` and `event.ingested` and calculate the difference. This will give you the following document. The `event.ingestion.latency` is in seconds.
