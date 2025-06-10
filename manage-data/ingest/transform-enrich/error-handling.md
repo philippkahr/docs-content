@@ -14,10 +14,12 @@ Ingest pipelines in Elasticsearch are powerful tools for transforming and enrich
 
 Errors in ingest pipelines typically fall into the following categories:
 
-* Parsing Errors: Occur when a processor fails to parse a field, such as a date or number.
-* Missing Fields: Happen when a required field is absent in the document.
+- Parsing Errors: Occur when a processor fails to parse a field, such as a date or number.
+- Missing Fields: Happen when a required field is absent in the document.
 
-**Recommendation**: Create an `error-handling-pipeline` that sets `event.kind` to `pipeline_error` and stores the error message, along with the tag from the failed processor, in the `error.message` field. Including a tag is especially helpful when using multiple `grok`, `dissect`, or `script` processors, as it helps identify which one caused the failure.
+:::tip
+Create an `error-handling-pipeline` that sets `event.kind` to `pipeline_error` and stores the error message, along with the tag from the failed processor, in the `error.message` field. Including a tag is especially helpful when using multiple `grok`, `dissect`, or `script` processors, as it helps identify which one caused the failure.
+:::
 
 The `on_failure` parameter can be defined either for individual processors or at the pipeline level to catch exceptions that may occur during document processing. The `ignore_failure` option allows a specific processor to silently skip errors without affecting the rest of the pipeline.
 
