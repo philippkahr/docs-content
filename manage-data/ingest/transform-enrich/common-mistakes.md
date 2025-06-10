@@ -6,9 +6,13 @@ applies_to:
   serverless: ga
 ---
 
-# Common mistakes
+# Create readable and maintainable ingest pipelines
 
-Here we are not discussing any performance metrics and if one way or the other one is faster, has less heap usage etc. What we are looking for is ease of maintenance and readability. Anybody who knows a bit about ingest pipelines should be able to fix a lot of issues. This section should provide a clear guide to “oh I have written this myself, ah that is the easier way to write it”.
+There are many ways to achieve similar results when creating ingest pipelines, which can make maintenance and readability difficult. This guide outlines patterns you can follow to make the maintenance and readability of ingest pipelines easier without sacrificing functionality.
+
+:::{note}
+This guide does not provide guidance on optimizing for ingest pipeline performance.
+:::
 
 ## if statements
 
