@@ -61,7 +61,7 @@ But it will error if object is `null`. To be a 100% on the safe side you need to
 
 ## Accessing fields in a script
 
-Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline\! Take the following input:
+Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline. Take the following input:
 
 ```json
 {
@@ -79,7 +79,7 @@ This works as long as `user_name` is populated. If it is null, you get null as v
 
 This is one of the alternatives to get it working when you only want to set it, if it is not null
 
-```
+```painless
 if (ctx.user_name != null) {
    ctx.user.name = ctx.user_name
 }
@@ -106,16 +106,18 @@ One common thing I use it for is when dealing with numbers and casting. The fiel
 
 This allows me to always set the `cpu.usage` field and not to worry about it, have an always working division. One other way to leverage this, in a simpler script is like this, but most scripts are rather complex so this is not that often applicable.
 
-```
-script: {
-  source: "ctx.abc = ctx.def"
-  if: "ctx.def != null"
+```json
+{
+  "script": {
+    "source": "ctx.abc = ctx.def"
+    "if": "ctx.def != null"
+  }
 }
 ```
 
 ## Check if a value exists and is not null
 
-In simplest case the `ignore_empty_value` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](https://www.elastic.co/guide/en/elasticsearch/painless/current/painless-operators-reference.html#null-safe-operator) to check if a field exists and is not `null`.
+In simplest case the `ignore_empty_value` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](elasticsearch::/references/painless/current/painless-operators-reference.html#null-safe-operator) to check if a field exists and is not `null`.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -159,7 +161,7 @@ Imagine you write this:
 
 Then the ? will transform this simple if statement to this:
 
-```
+```painless
 ctx.windows != null &&
 ctx.windows.event != null &&
 ctx.windows.event.data != null &&
@@ -390,14 +392,14 @@ Sometimes it is needed to write to a field and this field does not exist yet. Wh
 
 Creating something like `ctx.abc.def = “cool”` does not work unless you create the `abc` object beforehand or it already exists. There are multiple ways to do it. What we always or usually want to create is a Map. We can do it in a couple of ways:
 
-```
+```painless
 ctx.abc = new HashMap();
 ctx.abc = [:];
 ```
 
 Both options are valid and do the same thing. However there is a big caveat and that is, that if `abc` already exists, it will be overwritten and empty. Validating if `abc` already exists can be done by:
 
-```
+```painless
 if(ctx.abc == null) {
   ctx.abc = [:];
 }
@@ -405,7 +407,7 @@ if(ctx.abc == null) {
 
 With a simple `if ctx.abc == null` we know that `abc` does not exist and we can create it. Alternatively you can use the shorthand which is super helpful when you need to go 2,3,4 levels deep. You can use either version with the `HashMap()` or with the `[:]`.
 
-```
+```painless
 ctx.putIfAbsent("abc", new HashMap());
 ctx.putIfAbsent("abc", [:]);
 ```
@@ -424,7 +426,7 @@ Now assuming you want to create this structure:
 
 The `putIfAbsent` will help a ton here:
 
-```
+```painless
 ctx.putIfAbsent("user", [:]);
 ctx.user.putIfAbsent("geo", [:]);
 ctx.user.geo = "Amsterdam"
