@@ -14,198 +14,153 @@ There are many ways to achieve similar results when creating ingest pipelines, w
 This guide does not provide guidance on optimizing for ingest pipeline performance.
 :::
 
-## if statements
+## If Statements
 
-### Contains and lots of ORs
+`if` statements are frequently used in ingest pipeline processors to ensure that a processor only runs when specific conditions are met. By adding an `if` condition, you can control when a processor is applied, making your pipelines more flexible and robust.
 
-This \== statement can be rewritten
+### Avoiding Excessive OR Conditions
+
+When using the [boolean OR operator](elasticsearch://reference/scripting-languages/painless/painless-operators-boolean.md#boolean-or-operator) (`||`), it's easy for `if` conditions to become overly complex and difficult to maintain, especially when chaining many OR checks. Instead, consider using array-based checks like `.contains()` to simplify your logic and improve readability.
+
+#### ![don't](../../images/icon-cross.svg) **Don't**: Run many ORs
 
 ```painless
-"if": "ctx?.kubernetes?.container?.name == 'admin' || ctx?.kubernetes?.container?.name == 'def' 
-|| ctx?.kubernetes?.container?.name == 'demo' || ctx?.kubernetes?.container?.name == 'acme' 
+"if": "ctx?.kubernetes?.container?.name == 'admin' || ctx?.kubernetes?.container?.name == 'def'
+|| ctx?.kubernetes?.container?.name == 'demo' || ctx?.kubernetes?.container?.name == 'acme'
 || ctx?.kubernetes?.container?.name == 'wonderful'
 ```
 
-to the following easier maintainable and readable comprehension
+#### ![do](../../images/icon-check.svg) **Do**: Use contains to compare
 
 ```painless
 ["admin","def", ...].contains(ctx.kubernetes?.container?.name)
 ```
 
-The big implication here is that now the value `admin.contains('admin')` is executed. So if you only want to partially match because your data is `demo-admin-demo` then you still need to write: `ctx.kubernetes.container.name.contains('admin') ||...`
+A key implication is that using `["admin", "def", ...].contains(ctx.kubernetes?.container?.name)` checks for exact matches only. For example, `"admin".contains("admin")` returns `true`, but `"demo-admin-demo".contains("admin")` would not match unless you explicitly check for partial matches using something like `ctx.kubernetes.container.name.contains('admin') || ...`.
 
-The `?` work without any issue as it will be rewritten to `admin.contains(null)`.
+Also, the null safe operator (`?.`) works as expected here—if the value is `null`, the `contains` method simply returns `false` without causing an error.
 
-### Missing ? and contains operation
+### Null safe operator
 
-Here is another example, which would fail if `openshift` is not properly set since it is not using `?`, also the `()` are not really doing anything. As well as the unnecessary check of `openshift.origin` and then `openshift.origin.threadId`
+Anticipate potential problems with the data, and use the [null safe operator](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) (`?.`) to prevent data from being processed incorrectly.
 
-```painless
-"if": "ctx.openshift.eventPayload != null 
-&& (ctx.openshift.eventPayload.contains('Start expire sessions')) 
-&& ctx.openshift.origin != null 
-&& ctx.openshift.origin.threadId != null 
-&& (ctx.openshift.origin.threadId.contains('Catalina-utility'))",
-```
+:::{tip}
+It is not necessary to use a null safe operator for first level objects
+(for example, use `ctx.openshift` instead of `ctx?.openshift`).
+`ctx` will only ever be `null` if the entire `_source` is empty.
+:::
 
-This can become this:
+For example, if you only want data that has a valid string in a `ctx.openshift.origin.threadId` field:
 
-```painless
-"if": "ctx.openshift?.eventPayload instanceof String 
-&& ctx.openshift.eventPayload.contains('Start expire sessions') 
-&& ctx.openshift?.origin?.threadId instanceof String 
-&& ctx.openshift.origin.threadId.contains('Catalina-utility')",
-```
-
-### Contains operation and null check
-
-This includes an initial null check, which is not necessary.
+#### ![don't](../../images/icon-cross.svg) **Don't**: Leave the condition vulnerable to failures and use redundant checks
 
 ```painless
-"if": "ctx.event?.action !=null 
-&& ['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention',
-    'tcp syn flood detection','tcp connection limiting','http rate limiting',
-    'block malformed dns traffic','tcp connection reset','udp flood detection',
-    'dns rate limiting','malformed http filtering','icmp flood detection',
-    'dns nxdomain rate limiting','invalid packets'].contains(ctx.event.action)"
+ctx.openshift.origin != null <1>
+&& ctx.openshift.origin.threadId != null <2>
 ```
 
-This behaves nearly the same:
+1. It's unnecessary to check both `openshift.origin` and `openshift.origin.threadId`.
+2. This will fail if `openshift` is not properly set because it assumes that `ctx.openshift` and `ctx.openshift.origin` both exist.
+
+#### ![do](../../images/icon-check.svg) **Do**: Use the null safe operator
 
 ```painless
-"if": "['bandwidth','spoofed syn flood prevention','dns authentication','tls attack prevention',
-        'tcp syn flood detection','tcp connection limiting','http rate limiting',
-        'block malformed dns traffic','tcp connection reset','udp flood detection',
-        'dns rate limiting','malformed http filtering','icmp flood detection',
-        'dns nxdomain rate limiting','invalid packets'].contains(ctx.event?.action)"
+ctx.openshift?.origin?.threadId instanceof String <1>
 ```
 
-The difference is in the execution itself which should not matter since it is Java under the hood and pretty fast as this. In reality what happens is the following when doing the first one with the initial: `ctx.event?.action != null` If action is null, then it will exit here and not even perform the contains operation. In our second example we basically run the contains operation x times, for every item in the array and have `valueOfarray.contains('null')` then.
+1. Only if there's a `ctx.openshift` and a `ctx.openshift.origin` will it check for a `ctx.openshift.origin.threadId` and make sure it is a string.
 
-### Checking null and type unnecessarily
+### Use null safe operators when checking type
 
-This is just unnecessary
+If you're using a null safe operator, it will return the value if it is not `null` so there is no reason to check whether a value is not `null` before checking the type of that value.
+
+For example, if you only want data when the value of the `ctx.openshift.origin.eventPayload` field is a string:
+
+#### ![don't](../../images/icon-cross.svg) **Don't**: Use redundant checks
 
 ```painless
-"if": "ctx?.openshift?.eventPayload != null && ctx.openshift.eventPayload instanceof String"
+ctx?.openshift?.eventPayload != null && ctx.openshift.eventPayload instanceof String
 ```
 
-Because this is the same.
+#### ![do](../../images/icon-check.svg) **Do**: Use the null safe operator with the type check
 
 ```painless
-"if": "ctx.openshift?.eventPayload instanceof String"
+ctx.openshift?.eventPayload instanceof String
 ```
 
-Similar to the one above, in addition to that, we do not have `?` for dot-walking.
+### Use null safe operator with boolean OR operator
 
-```json
-{
-  "fail": {
-    "message": "This cannot be parsed as it a list and not a single message",
-    "if": "ctx._tmp.leef_kv.labelAbc != null && ctx._tmp.leef_kv.labelAbc instanceof List"
-  }
-},
-```
+When using the [boolean OR operator](elasticsearch://reference/scripting-languages/painless/painless-operators-boolean.md#boolean-or-operator) (`||`), you need to use the null safe operator for both conditions being checked.
 
-This version is easier to read and maintain since we remove the unnecessary null check and add dot walking.
+For example, if you want to include data when the value of the `ctx.event.type` field is either `null` or `'0'`:
 
-```json
-{
-  "fail": {
-    "message": "This cannot be parsed as it a list and not a single message",
-    "if": "ctx._tmp?.leef_kv?.labelAbc instanceof List"
-  }
-},
-```
-
-### Checking null and for a value
-
-This is interesting as it misses the `?` and therefore will have a null pointer exception if `event.type` is ever null.
+#### ![don't](../../images/icon-cross.svg) **Don't**: Leave the conditions vulnerable to failures
 
 ```painless
-"if": "ctx.event.type == null || ctx.event.type == '0'"
+ctx.event.type == null || ctx.event.type == '0' <1>
 ```
 
-This needs to become this:
+1. This will fail if `ctx.event` is not properly set because it assumes that `ctx.event` exists. If it fails on the first condition it won't even try the second condition.
+
+#### ![do](../../images/icon-check.svg) **Do**: Use the null safe operator in both conditions
 
 ```painless
 "if": "ctx.event?.type == null || ctx.event?.type == '0'"
 ```
 
-The reason why we need twice the `?` is because we are using an OR operator `||` therefore both parts of the if statement are executed.
+1. Both conditions will be checked.
 
-### Checking null
+### Avoiding Redundant Null Checks
 
-It is not necessary to write a `?` after the ctx itself. For first level objects such as `ctx.message`, `ctx.demo` it is enough to write it like this. If ctx is ever null you face other problems (basically the entire context, so the entire `_source` is empty and there is not even a _source... it's basically all null)
+It is often unnecessary to use the `?` (null safe operator) multiple times when you have already traversed the object path.
 
-```painless
-"if": "ctx?.message == null"
-```
-
-Is the same as:
+#### ![don't](../../images/icon-cross.svg) **Don't**: Use redundant null safe operators
 
 ```painless
-"if": "ctx.message == null"
+"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor?.ddos?.command_line != null"
 ```
 
-### Checking null multiple times
+#### ![do](../../images/icon-check.svg) **Do**: Use the null safe operator only where needed
 
-This is similar to other topics discussed above already. It is often not needed to check using the `?` a 2nd time when you already walked the object / path.
+Since the `if` condition is evaluated left to right, once `ctx.arbor?.ddos?.subsystem == 'CLI'` passes, you know `ctx.arbor.ddos` exists. You can safely omit the second `?`.
 
 ```painless
-"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor?.ddos?.command_line !=null"
+"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor.ddos.command_line != null"
 ```
 
-Same as:
+This improves readability and avoids redundant checks.
 
-```painless
-"if": "ctx.arbor?.ddos?.subsystem == 'CLI' && ctx.arbor.ddos.command_line !=null"
-```
+### Checking for emptiness
 
-Because the if condition is always executed left to right and therefore when `CLI` fails, the 2nd part of the if condition is not triggered. This means that we already walked the `ctx.arbor.ddos` path and therefore know that this object exists.
+When checking if a field is not empty, avoid redundant null safe operators and use clear, concise conditions.
 
-### Checking null way to often
-
-This:
-
-```painless
-"if": "ctx.process != null && ctx.process.thread != null 
-       && ctx.process.thread.id != null && (ctx.process.thread.id instanceof String)"
-```
-
-Can become just this:
-
-```painless
-"if": "ctx.process?.thread?.id instanceof String"
-```
-
-That is what the `?` is for, instead of listing every step individually and removing the unnecessary `()` as well.
-
-### Checking emptiness
-
-This:
+#### ![don't](../../images/icon-cross.svg) **Don't**: Use redundant null safe operators
 
 ```painless
 "if": "ctx?.user?.geo?.region != null && ctx?.user?.geo?.region != ''"
 ```
 
-Is the same as this. You do not need to write in the second && clause the ? anymore. Since you already proven that this is not null.
+#### ![do](../../images/icon-check.svg) **Do**: Use the null safe operator only where needed
+
+Once you've checked `ctx.user?.geo?.region != null`, you can safely access `ctx.user.geo.region` in the next condition.
 
 ```painless
 "if": "ctx.user?.geo?.region != null && ctx.user.geo.region != ''"
 ```
 
-Alternatively you can use (elvis, but if geo.region is a number/object, anything else than a String, you have a problem)
+#### ![do](../../images/icon-check.svg) **Do**: Use `.isEmpty()` for strings
 
-```painless
-"if": "ctx.user?.geo?.region?.isEmpty() ?: false"
-```
-
-Alternatively you can use:
+To check if a string field is not empty, use the [`isEmpty()` method](elasticsearch://reference/scripting-languages/painless/painless#painless-api-reference-string) in your condition. For example:
 
 ```painless
 "if": "ctx.user?.geo?.region instanceof String && ctx.user.geo.region.isEmpty() == false"
 ```
+
+This ensures the field exists, is a string, and is not empty.
+
+:::{tip}
+For such checks you can also ommit the `instanceof String` and use an [`Elvis`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference#elvis-operator) such as `if: ctx.user?.geo?.region?.isEmpty() ?: false`. This will only work when region is a String. If it is a double, object or any other type that does not have an `isEmpty()`function it will fail with a `Java Function not found` error.
+:::
 
 Here is a full reproducible example:
 
@@ -262,11 +217,13 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-## Going from mb,gb values to bytes
+## Converting mb/gb values to bytes
 
-We recommend to store everything as bytes in Elastic in `long` and then use the advanced formatting in Kibana Data View to render the bytes to human readable.
+When working with data sizes, it's best practice to store all values as bytes (using a `long` type) in Elasticsearch. This ensures consistency and allows you to leverage advanced formatting in Kibana Data Views to display human-readable sizes.
 
-Things like this:
+### ![don't](../../images/icon-cross.svg) **Don't**: Use multiple `gsub` processors for unit conversion
+
+Avoid chaining several `gsub` processors to strip units and manually convert values. This approach is error-prone, hard to maintain, and can easily miss edge cases.
 
 ```json
 {
@@ -298,7 +255,9 @@ Things like this:
 }
 ```
 
-Can become this:
+### ![do](../../images/icon-check.svg) **Do**: Use the `bytes` processor for automatic conversion
+
+The [`bytes` processor](https://www.elastic.co/guide/en/elasticsearch/reference/current/bytes-processor.html) automatically parses and converts strings like `"100M"` or `"2.5GB"` into their byte values. This is more reliable, easier to maintain, and supports a wide range of units.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -324,6 +283,10 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
+:::{tip}
+After storing values as bytes, you can use Kibana's field formatting to display them in a human-friendly format (KB, MB, GB, etc.) without changing the underlying data.
+:::
+
 ## Rename processor
 
 The rename processor renames a field. There are two flags:
@@ -335,17 +298,19 @@ Ignore missing is useful when you are not sure that the field you want to rename
 
 ## Script processor
 
-Sometimes we have to fallback to script processors.
+Sometimes, you may need to use a script processor in your ingest pipeline when no built-in processor can achieve your goal. However, it's important to write scripts that are clear, concise, and maintainable.
 
-### Calculating event.duration in a complex manner
+### Calculating `event.duration` in a complex manner
 
-There are many things wrong:
+#### ![don't](../../images/icon-cross.svg) **Don't**: Use verbose and error-prone scripting patterns
 
-- Square bracket access for fields.
-- Unnecessary if statement with multiple `!=` null statements instead of `?` usage.
-- SubString parsing instead of using DateTime features.
-- Event.duration is directly accessed without checking if event is even available.
-- Event.duration is wrong, this gives milliseconds. `Event.duration` should be in Nanoseconds.
+The following example demonstrates several common mistakes:
+
+- Accessing fields using square brackets (e.g., `ctx['temp']['duration']`) instead of dot notation.
+- Using multiple `!= null` checks instead of the null safe operator (`?.`).
+- Parsing substrings manually instead of leveraging date/time parsing utilities.
+- Accessing `event.duration` directly without ensuring `event` exists.
+- Calculating `event.duration` in milliseconds, when it should be in nanoseconds.
 
 ```json
 {
@@ -356,12 +321,19 @@ There are many things wrong:
      """,
     "if": "ctx.temp != null && ctx.temp.duration != null"
   }
-},
+}
 ```
 
-This becomes this.
+This approach is hard to read, error-prone, and doesn't take advantage of the powerful date/time features available in Painless.
 
-We use the if condition to ensure that `ctx.event` is available. The `[:]` is a shorthand to writing `ctx.event = New HashMap();`. We leverage the `DateTimeFormatter` and the `LocalTime` and use a builtin function to calculate the `NanoOfDay`.
+#### ![do](../../images/icon-check.svg) **Do**: Use null safe operators and built-in date/time utilities
+
+A better approach is to:
+
+- Use the null safe operator to check for field existence.
+- Ensure the `event` object exists before assigning to it.
+- Use `DateTimeFormatter` and `LocalTime` to parse the duration string.
+- Store the duration in nanoseconds, as expected by ECS.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -378,36 +350,42 @@ POST _ingest/pipeline/_simulate
   "pipeline": {
     "processors": [
       {
-      "script": {
-        "source": """
-           if(ctx.event == null){
-             ctx.event = [:];
-           }
-           DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
-           LocalTime time = LocalTime.parse(ctx.temp.duration, formatter);
-           ctx.event.duration = time.toNanoOfDay();
-         """,
-        "if": "ctx.temp != null && ctx.temp.duration != null"
+        "script": {
+          "source": """
+             if (ctx.event == null) {
+               ctx.event = [:];
+             }
+             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+             LocalTime time = LocalTime.parse(ctx.temp.duration, formatter);
+             ctx.event.duration = time.toNanoOfDay();
+           """,
+          "if": "ctx.temp?.duration != null"
+        }
       }
-    }
     ]
   }
 }
 ```
 
-## Unnecessary complex script to stitch together IP
+This version is more robust, easier to maintain, and leverages the full capabilities of Painless and Java's date/time APIs. Always prefer built-in utilities and concise, readable code when writing script processors.
 
-- No check if destination is available as object
-- Using square brackets for accessing
-- Unnecessary casting to Integer, we parse it as a String later anyway, so doesn't really matter.
-- Unnecessary allocation of additional field String ip , we can set the ctx. directly.
+## Stitching together IP addresses in a script processor
+
+When reconstructing or normalizing IP addresses in ingest pipelines, avoid unnecessary complexity and redundant operations.
+
+### ![don't](../../images/icon-cross.svg) **Don't**: Use verbose and error-prone scripting patterns
+
+- No check if `destination` is available as an object.
+- Uses square bracket notation for field access.
+- Unnecessary casting to `Integer` when parsing string segments.
+- Allocates an extra variable for the IP string instead of setting the field directly.
 
 ```json
 {
   "script": {
     "source": """
         String[] ipSplit = ctx['destination']['ip'].splitOnToken('.');
-        String ip = Integer.parseInt(ipSplit[0]) + '.' + Integer.parseInt(ipSplit[1]) + '.' + Integer.parseInt(ipSplit[2]) + '.' +Integer.parseInt(ipSplit[3]);
+        String ip = Integer.parseInt(ipSplit[0]) + '.' + Integer.parseInt(ipSplit[1]) + '.' + Integer.parseInt(ipSplit[2]) + '.' + Integer.parseInt(ipSplit[3]);
         ctx['destination']['ip'] = ip;
     """,
     "if": "(ctx['destination'] != null) && (ctx['destination']['ip'] != null)"
@@ -415,7 +393,11 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-Can become this. Instead of specifying `String[]` you can also just write `def temp`.
+### ![do](../../images/icon-check.svg) **Do**: Use concise, readable, and safe scripting
+
+- Use dot notation for field access.
+- Use the null safe operator (`?.`) to check for field existence.
+- Avoid unnecessary casting and extra variables.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -431,23 +413,25 @@ POST _ingest/pipeline/_simulate
   ],
   "pipeline": {
     "processors": [
-    {
-      "script": {
-        "source": """
-            String[] temp = ctx.destination.ip.splitOnToken('.');
-            ctx.destination.ip = temp[0]+"."+temp[1]+"."+temp[2]+"."+temp[3];
-        """,
-        "if": "ctx.destination?.ip != null"
+      {
+        "script": {
+          "source": """
+            def temp = ctx.destination.ip.splitOnToken('.');
+            ctx.destination.ip = temp[0] + "." + temp[1] + "." + temp[2] + "." + temp[3];
+          """,
+          "if": "ctx.destination?.ip != null"
+        }
       }
-    }
     ]
   }
 }
 ```
 
-## Removing of @timestamp
+This approach is more maintainable, avoids unnecessary operations, and ensures your pipeline scripts are robust and easy to understand.
 
-I encountered this bit:
+## ![don't](../../images/icon-cross.svg) **Don't**: Remove `@timestamp` before using the date processor
+
+It's a common mistake to explicitly remove the `@timestamp` field before running a date processor, as shown below:
 
 ```json
 {
@@ -477,13 +461,21 @@ I encountered this bit:
 }
 ```
 
-The removal is completely unnecessary. The date processor always overwrites the value in `@timestamp` unless you specify the target field.
+This removal step is unnecessary and can even be counterproductive. The `date` processor will automatically overwrite the value in `@timestamp` with the parsed date from your source field, unless you explicitly set a different `target_field`. There's no need to remove `@timestamp` beforehand—the processor will handle updating it for you.
+
+Removing `@timestamp` can also introduce subtle bugs, especially if the date processor is skipped or fails, leaving your document without a timestamp.
 
 ## Mustache tips and tricks
 
+Mustache is a simple templating language used in Elasticsearch ingest pipelines to dynamically insert field values into strings. You can use double curly braces (`{{ }}`) to reference fields from your document, enabling flexible and dynamic value assignment in processors like `set`, `rename`, and others.
+
+For example, `{{host.hostname}}` will be replaced with the value of the `host.hostname` field at runtime. Mustache supports accessing nested fields, arrays, and even provides some basic logic for conditional rendering.
+
 ### Accessing values in an array
 
-Using the `.index` in this case accessing the first value in the array can be done with `.0`
+When you need to reference a specific element in an array using Mustache templates, you can use dot notation with the zero-based index. For example, to access the first value in the `tags` array, use `.0` after the array field name.
+
+#### ![do](../../images/icon-check.svg) **Do**: Use array index notation in Mustache templates
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -512,3 +504,5 @@ POST _ingest/pipeline/_simulate
   }
 }
 ```
+
+In this example, `{{tags.0}}` retrieves the first element of the `tags` array (`"cool-host"`) and assigns it to the `host.alias` field. This approach is necessary when you want to extract a specific value from an array for use elsewhere in your document. Using the correct index ensures you get the intended value, and this pattern works for any array field in your source data.
