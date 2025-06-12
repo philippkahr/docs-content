@@ -90,7 +90,7 @@ When Logstash is the mix we want to add a timestamp, this can only be done by us
 
 ```logstash
 ruby {
-  code => "event.set('_tmp.logstash_seen', Time.now());"
+  code => "event.set('[_tmp][logstash_seen]', Time.now());"
 }
 ```
 
