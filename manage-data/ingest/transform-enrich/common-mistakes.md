@@ -150,7 +150,8 @@ Once you've checked `ctx.user?.geo?.region != null`, you can safely access `ctx.
 
 #### ![do](../../images/icon-check.svg) **Do**: Use `.isEmpty()` for strings
 
-To check if a string field is not empty, use the [`isEmpty()` method](elasticsearch://reference/scripting-languages/painless/painless#painless-api-reference-string) in your condition. For example:
+% TO DO: Find link to `isEmpty()` method
+To check if a string field is not empty, use the `isEmpty()` method in your condition. For example:
 
 ```painless
 "if": "ctx.user?.geo?.region instanceof String && ctx.user.geo.region.isEmpty() == false"
@@ -159,7 +160,7 @@ To check if a string field is not empty, use the [`isEmpty()` method](elasticsea
 This ensures the field exists, is a string, and is not empty.
 
 :::{tip}
-For such checks you can also ommit the `instanceof String` and use an [`Elvis`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference#elvis-operator) such as `if: ctx.user?.geo?.region?.isEmpty() ?: false`. This will only work when region is a String. If it is a double, object or any other type that does not have an `isEmpty()`function it will fail with a `Java Function not found` error.
+For such checks you can also ommit the `instanceof String` and use an [`Elvis`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#elvis-operator) such as `if: ctx.user?.geo?.region?.isEmpty() ?: false`. This will only work when region is a String. If it is a double, object or any other type that does not have an `isEmpty()`function it will fail with a `Java Function not found` error.
 :::
 
 Here is a full reproducible example:

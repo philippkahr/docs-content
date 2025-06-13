@@ -101,7 +101,7 @@ You see that I switched up the null value to an empty String. Since the String h
 
 One common thing I use it for is when dealing with numbers and casting. The field specifies the usage in `%`, however Elasticsearch doesn't like this, or better to say Kibana renders % as `0-1` for `0%-100%` and not `0-100`. `100` is equal to `10.000%`
 
-- field: `cpu_usage = 100.00`  
+- field: `cpu_usage = 100.00`
 - `ctx.cpu.usage = $('cpu_usage',0.0)/100`
 
 This allows me to always set the `cpu.usage` field and not to worry about it, have an always working division. One other way to leverage this, in a simpler script is like this, but most scripts are rather complex so this is not that often applicable.
@@ -117,7 +117,7 @@ This allows me to always set the `cpu.usage` field and not to worry about it, ha
 
 ## Check if a value exists and is not null
 
-In simplest case the `ignore_empty_value` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](elasticsearch::/references/painless/current/painless-operators-reference.html#null-safe-operator) to check if a field exists and is not `null`.
+In simplest case the `ignore_empty_value` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) to check if a field exists and is not `null`.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -179,7 +179,7 @@ An [elvis](https://www.elastic.co/guide/en/elasticsearch/painless/current/painle
 
 Most safest and secure option is to write:
 
-- `ctx.message instanceof String && ctx.message.startsWith('shoe')`  
+- `ctx.message instanceof String && ctx.message.startsWith('shoe')`
 - `ctx.event?.category instanceof String && ctx.event.category.startsWith('shoe')`
 
 The reason for that is, if `event.category`  is a number, object or anything other than a `String` then it does not have the `startsWith` function and therefore will error with function `startsWith` not available on type object.
@@ -306,7 +306,7 @@ POST _ingest/pipeline/_simulate
       }
     }
   }
-  ], 
+  ],
   "pipeline": {
     "processors": [
       {
@@ -336,7 +336,7 @@ POST _ingest/pipeline/_simulate
         "@timestamp": "2021-08-13T09:06:00.000Z"
       }
     }
-  ], 
+  ],
   "pipeline": {
     "processors": [
       {
