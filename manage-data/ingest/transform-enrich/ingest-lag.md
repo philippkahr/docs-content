@@ -16,7 +16,7 @@ The basic calculation is:
 
 ## Understanding `event.ingested`
 
-The `event.ingested` timestamp can be obtained in two ways:
+You can obtain `event.ingested` timestamp in two ways:
 
 - `_ingest.timestamp`  
   Available through the mustache notation `{{_ingest.timestamp}}` in all processors except `script`.
