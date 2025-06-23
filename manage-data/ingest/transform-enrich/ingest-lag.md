@@ -98,7 +98,7 @@ ruby {
 
 ### Elastic Agent to Elasticsearch
 
-We can use `@timestamp` and `event.ingested` and calculate the difference. This will give you the following document. The `event.ingestion.latency` is in seconds.
+Use `@timestamp` and `event.ingested` to calculate the difference. This will give you the following document. The `event.ingestion.latency` is in seconds.
 
 ```json
 {
