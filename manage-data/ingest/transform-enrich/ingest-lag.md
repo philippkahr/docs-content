@@ -244,7 +244,7 @@ Below is a script that calculates the latency for each step in the pipeline. The
 }
 ```
 
-#### Script
+#### Example script [agent-to-es-logstash-kafka-example]
 
 To remove the first calculation, ensure that the object `event.ingestion` is available. You can also merge all of the steps into one larger script.
 
