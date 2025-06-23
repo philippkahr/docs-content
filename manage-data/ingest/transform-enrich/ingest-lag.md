@@ -170,7 +170,7 @@ Below is a script that calculates these differences, providing latency values fo
 
 #### Script
 
-If you want to remove the first calculation, you will need to ensure that the object `event.ingestion` is available.
+If you want to remove the first calculation, ensure that the object `event.ingestion` is available.
 
 ```json
 POST _ingest/pipeline/_simulate
