@@ -154,7 +154,7 @@ Elastic Agent populates the `@timestamp` field, but Logstash doesn't add any tim
 
 These values can be especially helpful for debugging, as they allow you to quickly determine where the lag is introduced, and whether the delay is caused by the transfer from Elastic Agent to Logstash or from Logstash to Elasticsearch.
 
-Below is a script that calculates these differences, providing latency values for each of the stages mentioned above.
+This script calculates these differences, providing latency values for each of the stages previously mentioned.
 
 ```json
 {
