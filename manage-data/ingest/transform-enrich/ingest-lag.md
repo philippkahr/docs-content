@@ -28,7 +28,7 @@ You can obtain `event.ingested` timestamp in two ways:
 The `event.ingested` option is typically set in the Fleet final pipeline, which runs as the last step in the ingest process. Calculating the latency in seconds is sufficient for most use cases.
 ::::
 
-## Calculating Ingestion Latency
+## Calculating ingestion latency
 
 The following script is the core of the solution. It creates a new field, `event.ingestion.latency`, which you can use to monitor ingestion performance across your pipelines.
 
@@ -144,7 +144,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### Elastic Agent to Elasticsearch through Logstash
+### Elastic Agent => Logstash => Elasticsearch
 
 Elastic Agent populates the `@timestamp` field, but Logstash doesn't add any timestamp by default. Add a temporary timestamp, for example by setting `_tmp.logstash_seen`. With this, you can calculate the following latency values:
 
