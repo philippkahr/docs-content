@@ -78,7 +78,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-In the example above, we can see that the timestamp, when the Elastic Agent read the document was `3rd April at 10:00`, while the actual log message on the disk is from `3rd March`. If we calculate the difference at the first step, before any parsing, we can be confident that the result will be accurate. However, if we perform the calculation as the final step in the pipeline (which is typically the case with Elastic Integrations that use `@custom` pipelines), the timestamp of `2025-03-01` will be used as `@timestamp`, leading to an erroneous latency calculation.
+In the previous example, the read timestamp was `3rd April at 10:00`, while the actual log message on storage is from `3rd March`. If you calculate the difference at the first step, before any parsing, the result will be accurate. However, if you calculate as the final step in the pipeline, which is typically the case with Elastic Integrations that use `@custom` pipelines, the timestamp of `2025-03-01` will be used as `@timestamp`, leading to an erroneous latency calculation.
 
 While we can't always resolve every situation, the approach described above usually results in a "good enough" solution. For many use cases, simply using `@timestamp` is sufficient, as we expect the Elastic Agent to pick up logs as quickly as possible. During the initial onboarding of new data sources, there might be higher latency due to the ingestion of historical or older data.
 
