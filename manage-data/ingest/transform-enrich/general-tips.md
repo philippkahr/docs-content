@@ -10,9 +10,11 @@ applies_to:
 
 There are various ways to handle data in ingest pipelines, and while they all produce similar results, some methods might be more suitable depending on the specific case. This section provides guidance to ensure that your ingest pipelines are consistent, readable, and maintainable. While we won't focus heavily on performance optimizations, the goal is to create pipelines that are easy to understand and manage.
 
-## Accessing Fields in `if` Statements
+## Accessing fields in `if` statements / conditionals
 
-In an ingest pipeline, when working with `if` statements inside processors, you can access fields in two ways:
+In an ingest pipeline, when working with `if` statements also known as conditionals inside processors. The topic around error processing is a bit more complex, most importantly any errors that are coming from null values, missing keys, missing values, inside the conditional, will lead to an error that is not captured by the `ignore_failure` handler and will exit the pipeline.
+
+You can access fields in two ways:
 
 - Dot notation
 - Square bracket notation
