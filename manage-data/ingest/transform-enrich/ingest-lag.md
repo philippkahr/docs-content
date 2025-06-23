@@ -246,7 +246,7 @@ Below is a script that calculates the latency for each step in the pipeline. The
 
 #### Script
 
-If you want to remove the first calculation, you will need to ensure that the object `event.ingestion` is available. Of course you could merge all of the steps into one larger script. I personally like to separate it, so you can edit, modify and enhance exactly what you need.
+To remove the first calculation, ensure that the object `event.ingestion` is available. You can also merge all of the steps into one larger script.
 
 ```json
 POST _ingest/pipeline/_simulate
