@@ -6,7 +6,7 @@ applies_to:
   serverless: ga
 ---
 
-# Ingest Lag
+# Calculate the ingest lag metadata
 
 Ingest lag is the time it takes from when a document is read to when it is received by {{es}}. Store this value in minutes, seconds, or milliseconds, and use it to create visualizations and alerts.
 
@@ -88,7 +88,7 @@ Regardless of the chosen architecture, add a `remove` processor at the end of th
 
 ## Logstash
 
-When Logstash is the mix we want to add a timestamp, this can only be done by using Ruby and the simplest form is this:
+When Logstash is added to the architecture we must add a timestamp, this can only be done by using Ruby and the simplest form is this:
 
 ```logstash
 ruby {
@@ -110,7 +110,7 @@ Use `@timestamp` and `event.ingested` to calculate the difference. This will giv
 }
 ```
 
-#### Script
+This script contains the processors needed for an ingest pipeline to calculate the ingest lag.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -149,8 +149,8 @@ POST _ingest/pipeline/_simulate
 Elastic Agent populates the `@timestamp` field, but Logstash doesn't add any timestamp by default. Add a temporary timestamp, for example by setting `_tmp.logstash_seen`. With this, you can calculate the following latency values:
 
 - Total latency: (`@timestamp - event.ingested`)
-- Elastic Agent => Logstash: (`@timestamp - _tmp.logstash_seen`)
-- Logstash => Elasticsearch: (`_tmp.logstash_seen - event.ingested`)
+- Elastic Agent to Logstash: (`@timestamp - _tmp.logstash_seen`)
+- Logstash to Elasticsearch: (`_tmp.logstash_seen - event.ingested`)
 
 These values can be especially helpful for debugging, as they allow you to quickly determine where the lag is introduced, and whether the delay is caused by the transfer from Elastic Agent to Logstash or from Logstash to Elasticsearch.
 
@@ -168,9 +168,7 @@ This script calculates these differences, providing latency values for each of t
 }
 ```
 
-#### Script
-
-If you want to remove the first calculation, ensure that the object `event.ingestion` is available.
+This script contains the processors needed for an ingest pipeline to calculate the ingest lag. If you want to remove the first calculation, ensure that the object `event.ingestion` is available.
 
 ```json
 POST _ingest/pipeline/_simulate
@@ -244,9 +242,7 @@ This is a script that calculates the latency for each step in the pipeline. The 
 }
 ```
 
-#### Example script [agent-to-es-logstash-kafka-example]
-
-To remove the first calculation, ensure that the object `event.ingestion` is available. You can also merge all of the steps into one larger script.
+This script contains the processors needed for an ingest pipeline to calculate the ingest lag. To remove the first calculation, ensure that the object `event.ingestion` is available. You can also merge all of the steps into one larger script.
 
 ```json
 POST _ingest/pipeline/_simulate
