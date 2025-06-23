@@ -227,7 +227,7 @@ POST _ingest/pipeline/_simulate
 
 ### Elastic Agent => Logstash => Kafka => Logstash => Elasticsearch
 
-As with the previous scenario, adding an additional hop introduces another point where latency can occur. The recommendation here is to add another temporary timestamp field. For more details, refer to the [Elastic Agent => Logstash => Elasticsearch](#elastic-agent--logstash--elasticsearch) section above.
+As with the previous scenario, adding an additional hop introduces another point where latency can occur. The recommendation is to add another temporary timestamp field. For more details, refer to the previous section.
 
 This is a script that calculates the latency for each step in the pipeline. The following values will be generated:
 
