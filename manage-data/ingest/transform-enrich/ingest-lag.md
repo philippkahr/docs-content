@@ -49,7 +49,7 @@ The following script is the core of the solution. It creates a new field, `event
 
 ## @timestamp
 
-One important detail to keep in mind: the value of `@timestamp` can vary depending on the data source. It might represent the time the Elastic Agent read the document, or it might be the actual timestamp extracted from the document itself after parsing.
+The value of `@timestamp` can vary depending on the data source. It might represent the time the Elastic Agent read the document, or it might be the actual timestamp extracted from the document itself after parsing.
 
 This distinction is crucial because it affects how ingest lag is calculated. For example, when Elastic Agent reads Windows Event Logs, it sets `@timestamp` based on the log's original timestamp. However, this behavior does not apply to all sources—such as syslog messages or Linux log files—where `@timestamp` is often set later in the pipeline, after parsing.
 
