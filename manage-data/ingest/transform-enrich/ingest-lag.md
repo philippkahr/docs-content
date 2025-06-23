@@ -84,7 +84,7 @@ For many use cases, simply using `@timestamp` is sufficient, as we expect the El
 
 ## Architectures
 
-Regardless of the chosen architecture, it's a good practice to add a `remove` processor at the end of the pipeline to drop the `_tmp` field. The raw timestamps from the various processing steps are not needed, as the latency in seconds should be sufficient. For additional pipeline architectures, refer to the [Ingest Architectures](../ingest-reference-architectures.md) documentation.
+Regardless of the chosen architecture, add a `remove` processor at the end of the pipeline to drop the `_tmp` field. The raw timestamps from the various processing steps are not needed, as the latency in seconds should be sufficient. For additional pipeline architectures, refer to [Ingest architectures](../ingest-reference-architectures.md).
 
 ## Logstash
 
