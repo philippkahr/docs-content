@@ -19,7 +19,7 @@ The basic calculation is:
 The `event.ingested` timestamp can be obtained in two ways:
 
 - `_ingest.timestamp`  
-  Available via mustache notation `{{_ingest.timestamp}}` in all processors except `script`.
+  Available through the mustache notation `{{_ingest.timestamp}}` in all processors except `script`.
 
 - `metadata().now`
   Available only in the `script` processor. Use this instead of `_ingest.timestamp` when working with scripts.
