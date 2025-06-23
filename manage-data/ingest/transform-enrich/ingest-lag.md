@@ -152,7 +152,7 @@ Elastic Agent populates the `@timestamp` field, but Logstash doesn't add any tim
 - Elastic Agent => Logstash: (`@timestamp - _tmp.logstash_seen`)
 - Logstash => Elasticsearch: (`_tmp.logstash_seen - event.ingested`)
 
-These values can be especially helpful for debugging, as they allow you to quickly determine where the lag is introduced. Is the delay caused by the transfer from Elastic Agent to Logstash, or from Logstash to Elasticsearch?
+These values can be especially helpful for debugging, as they allow you to quickly determine where the lag is introduced, and whether the delay is caused by the transfer from Elastic Agent to Logstash or from Logstash to Elasticsearch.
 
 Below is a script that calculates these differences, providing latency values for each of the stages mentioned above.
 
