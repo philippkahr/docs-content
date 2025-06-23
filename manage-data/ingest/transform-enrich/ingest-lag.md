@@ -144,7 +144,7 @@ POST _ingest/pipeline/_simulate
 }
 ```
 
-### Elastic Agent => Logstash => Elasticsearch
+### Elastic Agent to Elasticsearch through Logstash
 
 In this scenario, we have an additional hop to manage. Elastic Agent populates the `@timestamp`, but Logstash does not add any timestamp by default. We recommend adding a temporary timestamp, for example by setting `_tmp.logstash_seen`. With this, you can calculate the following latency values:
 
