@@ -24,7 +24,9 @@ The `event.ingested` timestamp can be obtained in two ways:
 - `metadata().now`
   Available only in the `script` processor. Use this instead of `_ingest.timestamp` when working with scripts.
 
-Note that `event.ingested` is typically set in the **Fleet final pipeline**, which runs as the last step in the ingest process. Calculating the latency in **seconds** is usually sufficient for most use cases.
+::::{note}
+The `event.ingested` option is typically set in the Fleet final pipeline, which runs as the last step in the ingest process. Calculating the latency in seconds is sufficient for most use cases.
+::::
 
 ## Calculating Ingestion Latency
 
