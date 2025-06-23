@@ -8,7 +8,7 @@ applies_to:
 
 # Ingest Lag
 
-Ingest lag is a recurring topic that deserves its own section. The goal is simple: calculate the time it takes from when a document is read to when it is received by Elasticsearch. Store this value in minutes, seconds, or milliseconds, and use it to create visualizations and alerts.
+Ingest lag is the time it takes from when a document is read to when it is received by {{es}}. Store this value in minutes, seconds, or milliseconds, and use it to create visualizations and alerts.
 
 The basic calculation is:
 
