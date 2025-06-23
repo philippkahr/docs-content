@@ -82,6 +82,19 @@ In the previous example, the read timestamp was `3rd April at 10:00`, while the 
 
 For many use cases, simply using `@timestamp` is sufficient, as we expect the Elastic Agent to pick up logs as quickly as possible. During the initial onboarding of new data sources, there might be higher latency due to the ingestion of historical or older data.
 
+## The importance of `event.created`
+
+As discussed above `@timestamp` is set to the timestamp from within the collected log. Whenever we need to calculate a true value, it can be off, because it can take Elastic Agent seconds, minutes, hours, days, ... to pick up something. Imagine you onboard an old server for the first time, your latency will shoot through the roof, since you might collect year old data. `event.created` is not automatically added to any log in Elastic Agent. For that you need to add the following processor to the advanced settings within an integration.
+
+```yaml
+- script:
+    lang: javascript
+    source: >
+      function process(event) {
+          event.put("event.created", Date.now());
+      }
+```
+
 ## Architectures
 
 Regardless of the chosen architecture, add a `remove` processor at the end of the pipeline to drop the `_tmp` field. The raw timestamps from the various processing steps are not needed, as the latency in seconds should be sufficient. For additional pipeline architectures, refer to [Ingest architectures](../ingest-reference-architectures.md).
