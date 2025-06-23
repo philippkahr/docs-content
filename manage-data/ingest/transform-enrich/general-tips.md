@@ -75,13 +75,14 @@ When you want to set the `user.name` field with a script:
 
 - `ctx.user.name = ctx.user_name`
 
-This works as long as `user_name` is populated. If it is null, you get null as value for user.name. Additionally, when the `user` object does not exist, it will error because Java needs you to define the `user` object first before adding a key `name` into it.
+This works as long as `user_name` is populated. If it is null you will get `null` as value. Additionally, when the `user` object does not exist, it will error because Java needs you to define the `user` object first before adding a key `name` into it. We cover the `new HashMap()` further down.
 
 This is one of the alternatives to get it working when you only want to set it, if it is not null
 
 ```painless
 if (ctx.user_name != null) {
-   ctx.user.name = ctx.user_name
+   ctx.user = new HashMap();
+   ctx.user.name = ctx.user_name;
 }
 ```
 
