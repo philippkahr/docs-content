@@ -25,7 +25,7 @@ Create an `error-handling-pipeline` that sets `event.kind` to `pipeline_error` a
 
 The `on_failure` parameter can be defined either for individual processors or at the pipeline level to catch exceptions that may occur during document processing. The `ignore_failure` option allows a specific processor to silently skip errors without affecting the rest of the pipeline.
 
-## Global vs. Processor-Specific
+## Global vs. processor-specific
 
 The following example demonstrates how to use the `on_failure` handler at the pipeline level rather than within individual processors. While this approach ensures the pipeline exits gracefully on failure, it also means that processing stops at the point of error.
 
