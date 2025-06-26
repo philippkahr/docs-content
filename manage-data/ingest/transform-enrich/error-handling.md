@@ -10,7 +10,9 @@ applies_to:
 
 Ingest pipelines in Elasticsearch are powerful tools for transforming and enriching data before indexing. However, errors can occur during processing. This guide outlines strategies for handling such errors effectively.
 
-**Important**: Ingest pipelines are executed before the document is indexed by Elasticsearch. You can handle the errors occurring while processing the document (i.e. transforming the json object) but not the errors triggered while indexing like mapping conflict. For this is the Elasticsearch Failure Store.
+:::{important}
+Ingest pipelines are executed before the document is indexed by Elasticsearch. You can handle the errors occurring while processing the document (i.e. transforming the json object) but not the errors triggered while indexing like mapping conflict. For this is the Elasticsearch Failure Store.
+:::
 
 Errors in ingest pipelines typically fall into the following categories:
 
