@@ -91,7 +91,9 @@ The second processor, which sets `event.category` to `authentication`, is no lon
 
 We can restructure the pipeline by moving the `on_failure` handling directly into the processor itself. This allows the pipeline to continue execution. In this case, the `event.category` processor still runs. You can also retain the global `on_failure` to handle errors from other processors, while adding processor-specific error handling where needed.
 
-(While executing two `set` processors within the `dissect` error handler may not always be ideal, it serves as a demonstration.)
+:::{note}
+While executing two `set` processors within the `dissect` error handler may not always be ideal, it serves as a demonstration.
+{note}
 
 For the `dissect` processor, consider setting a temporary field like `_tmp.error: dissect_failure`. You can then use `if` conditions in later processors to execute them only if parsing failed, allowing for more controlled and flexible error handling.
 
