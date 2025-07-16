@@ -14,9 +14,115 @@ There are many ways to achieve similar results when creating ingest pipelines, w
 This guide does not provide guidance on optimizing for ingest pipeline performance.
 :::
 
-## Write concise `if` statements
+## Write concise `if` conditional statements
 
 Use `if` statements to ensure that an ingest pipeline processor is only applied when specific conditions are met.
+
+### Accessing fields in conditionals
+
+In an ingest pipeline, when working with `if` statements also known as conditionals inside processors. The topic around error processing is a bit more complex, most importantly any errors that are coming from null values, missing keys, missing values, inside the conditional, will lead to an error that is not captured by the `ignore_failure` handler and will exit the pipeline.
+
+You can access fields in two ways:
+
+- Dot notation
+- Square bracket notation
+
+For example:
+
+- `ctx.event.action`
+
+is equivalent to:
+
+- `ctx['event']['action']`
+
+Both notations can be used to reference fields, so choose the one that makes your pipeline easier to read and maintain.
+
+:::{warn}
+No support for null safety operations `?`
+{warn}
+
+Use the bracket notation when you have special characters such as `@` in the field name, or a `.` in the field name. As an example:
+
+- field_name: `demo.cool.stuff`
+
+using:
+
+`ctx.demo.cool.stuff` it would try to access the field `stuff` in the object `cool` in the object `demo`.
+
+using:
+
+`ctx['demo.cool.stuff']` it can access the field directly.
+
+You can also mix and match both worlds when needed:
+
+- field_name: `my.nested.object.has@!%&chars`
+
+Proper way: `ctx.my.nested.object['has@!%&chars']`
+
+You can even, partially use the `?` operator:
+
+- `ctx.my?.nested?.object['has@!%&chars']`
+
+But it will error if object is `null`. To be a 100% on the safe side you need to write the following statement:
+
+- `ctx.my?.nested?.object != null && ctx.my.nested.object['has@!%&chars'] == ...`
+
+#### Accessing fields in a script
+
+Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline. Take the following input:
+
+```json
+{
+  "_source": {
+       "user_name": "philipp"
+  }
+}
+```
+
+When you want to set the `user.name` field with a script:
+
+- `ctx.user.name = ctx.user_name`
+
+This works as long as `user_name` is populated. If it is null you will get `null` as value. Additionally, when the `user` object does not exist, it will error because Java needs you to define the `user` object first before adding a key `name` into it. We cover the `new HashMap()` further down.
+
+This is one of the alternatives to get it working when you only want to set it, if it is not null
+
+```painless
+if (ctx.user_name != null) {
+   ctx.user = new HashMap();
+   ctx.user.name = ctx.user_name;
+}
+```
+
+This works fine, as you now check for null.
+
+However there is also an easier to write and maintain alternative available:
+
+- `ctx.user.name = $('user_name', null);`
+
+This $('field', 'fallback') allows you to specify the field without the `CTX` for walking. You can even supply `$('this.very.nested.field.is.super.far.away', null)` when you need to. The fallback is in case the field is null. This comes in very handy when needing to do certain manipulation of data. Let's say you want to lowercase all the field names, you can simply write this now:
+
+- `ctx.user.name = $('user_name','').toLowerCase();`
+
+You see that I switched up the null value to an empty String. Since the String has the `toLowerCase()` function. This of course works with all types. Bit of a silly thing, since you could simply write `object.abc` as the field value. As an example you can see that we can even create a map, list, array, whatever you want.
+
+- `if ($('object', {}).containsKey('abc')){}`
+
+One common thing I use it for is when dealing with numbers and casting. The field specifies the usage in `%`, however Elasticsearch doesn't like this, or better to say Kibana renders % as `0-1` for `0%-100%` and not `0-100`. `100` is equal to `10.000%`
+
+- field: `cpu_usage = 100.00`
+- `ctx.cpu.usage = $('cpu_usage',0.0)/100`
+
+This allows me to always set the `cpu.usage` field and not to worry about it, have an always working division. One other way to leverage this, in a simpler script is like this, but most scripts are rather complex so this is not that often applicable.
+
+```json
+{
+  "script": {
+    "source": "ctx.abc = ctx.def"
+    "if": "ctx.def != null"
+  }
+}
+```
 
 ### Avoid excessive OR conditions
 
@@ -40,9 +146,74 @@ When using the [boolean OR operator](elasticsearch://reference/scripting-languag
 This example only checks for exact matches. Do not use this approach if you need to check for partial matches.
 :::
 
-### Use null safe operators
+### Use null safe operators `?`
 
-Anticipate potential problems with the data, and use the [null safe operator](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) (`?.`) to prevent data from being processed incorrectly.
+In simplest case the `ignore_missing` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) to check if a field exists and is not `null`.
+
+```json
+POST _ingest/pipeline/_simulate
+{
+  "docs": [
+    {
+      "_source": {
+        "host": {
+          "hostname": "test"
+        },
+        "ip": "127.0.0.1"
+      }
+    },
+    {
+      "_source": {
+        "ip": "127.0.0.1"
+      }
+    }
+  ],
+  "pipeline": {
+    "processors": [
+      {
+        "set": {
+          "field": "a",
+          "value": "b",
+          "if": "ctx.host?.hostname == 'test'"
+        }
+      }
+    ]
+  }
+}
+```
+
+This pipeline will work in both cases because `host?` checks if `host` exists and if not returns `null`. Removing `?` from the `if` condition will fail the second document with an error message: `cannot access method/field [hostname] from a null def reference`
+
+The null operator `?`  is actually doing this behind the scene:
+
+Imagine you write this:
+
+- `ctx.windows?.event?.data?.user?.name == "philipp"`
+
+Then the ? will transform this simple if statement to this:
+
+```painless
+ctx.windows != null &&
+ctx.windows.event != null &&
+ctx.windows.event.data != null &&
+ctx.windows.event.data.user != null &&
+ctx.windows.event.data.user.name == "philipp"
+```
+
+You can use the null safe operator with function too:
+
+- `ctx.message?.startsWith('shoe')`
+
+An [elvis](https://www.elastic.co/guide/en/elasticsearch/painless/current/painless-operators-reference.html#elvis-operator) might be useful in your script to handle these  maybe null value:
+
+- `ctx.message?.startsWith('shoe') ?: false`
+
+Most safest and secure option is to write:
+
+- `ctx.message instanceof String && ctx.message.startsWith('shoe')`
+- `ctx.event?.category instanceof String && ctx.event.category.startsWith('shoe')`
+
+The reason for that is, if `event.category`  is a number, object or anything other than a `String` then it does not have the `startsWith` function and therefore will error with function `startsWith` not available on type object.
 
 :::{tip}
 It is not necessary to use a null safe operator for first level objects
@@ -69,6 +240,43 @@ ctx.openshift?.origin?.threadId instanceof String <1>
 ```
 
 1. Only if there's a `ctx.openshift` and a `ctx.openshift.origin` will it check for a `ctx.openshift.origin.threadId` and make sure it is a string.
+
+#### Use the `containsKey`
+
+The `containsKey` can be used to check if a map contains a specific key.
+
+```json
+POST _ingest/pipeline/_simulate
+{
+  "docs": [
+    {
+      "_source": {
+        "ip": "127.0.0.1"
+      }
+    },
+    {
+      "_source": {
+        "test": "asd"
+      }
+    }
+  ],
+  "pipeline": {
+    "processors": [
+      {
+        "set": {
+          "field": "a",
+          "value": "b",
+          "if": "ctx.containsKey('test')"
+        }
+      }
+    ]
+  }
+}
+```
+
+:::{warn}
+This is more complex then it seems, since you will end up writing `ctx.kubernetes.containsKey('namespace')`. If `kubernetes` is null, or comes in as a String it will break processing. Stick to the null safe operator `?` for most work.
+{warn}
 
 ### Use null safe operators when checking type
 
@@ -302,6 +510,54 @@ The [rename processor](elasticsearch://reference/enrich-processor/rename-process
 
 If no built-in processor can achieve your goal, you may need to use a [script processor](elasticsearch://reference/enrich-processor/script-processor.md) in your ingest pipeline. Be sure to write scripts that are clear, concise, and maintainable.
 
+### Setting the value of a field
+
+Sometimes it is needed to write to a field and this field does not exist yet. Whenever the object above it exists, this can be done immediately.
+
+`ctx.abc = “cool”` works without any issue as we are adding a root field called `abc`.
+
+Creating something like `ctx.abc.def = “cool”` does not work unless you create the `abc` object beforehand or it already exists. There are multiple ways to do it. What we always or usually want to create is a Map. We can do it in a couple of ways:
+
+```painless
+ctx.abc = new HashMap();
+ctx.abc = [:];
+```
+
+Both options are valid and do the same thing. However there is a big caveat and that is, that if `abc` already exists, it will be overwritten and empty. Validating if `abc` already exists can be done by:
+
+```painless
+if(ctx.abc == null) {
+  ctx.abc = [:];
+}
+```
+
+With a simple `if ctx.abc == null` we know that `abc` does not exist and we can create it. Alternatively you can use the shorthand which is super helpful when you need to go 2,3,4 levels deep. You can use either version with the `HashMap()` or with the `[:]`.
+
+```painless
+ctx.putIfAbsent("abc", new HashMap());
+ctx.putIfAbsent("abc", [:]);
+```
+
+Now assuming you want to create this structure:
+
+```json
+{
+  "user": {
+    "geo": {
+      "city": "Amsterdam"
+   }
+  }
+}
+```
+
+The `putIfAbsent` will help a ton here:
+
+```painless
+ctx.putIfAbsent("user", [:]);
+ctx.user.putIfAbsent("geo", [:]);
+ctx.user.geo = "Amsterdam"
+```
+
 ### Calculate `event.duration` in a complex manner
 
 #### ![ ](../../images/icon-cross.svg) **Don't**: Use verbose and error-prone scripting patterns
@@ -362,6 +618,37 @@ POST _ingest/pipeline/_simulate
 2. Use `DateTimeFormatter` and `LocalTime` to parse the duration string.
 3. Store the duration in nanoseconds, as expected by ECS.
 4. Use the null safe operator to check for field existence.
+
+#### Calculate time in other timezone
+
+When you cannot use the date and its timezone parameter, you can use `datetime` in Painless
+
+```json
+POST _ingest/pipeline/_simulate
+{
+  "docs": [
+    {
+      "_source": {
+        "@timestamp": "2021-08-13T09:06:00.000Z"
+      }
+    }
+  ],
+  "pipeline": {
+    "processors": [
+      {
+        "script": {
+          "source": """
+            ZonedDateTime zdt = ZonedDateTime.parse(ctx['@timestamp']);
+            ZonedDateTime zdt_local = zdt.withZoneSameInstant(ZoneId.of('Europe/Berlin'));
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy - HH:mm:ss Z");
+            ctx.localtime = zdt_local.format(formatter);
+          """
+        }
+      }
+    ]
+  }
+}
+```
 
 ### Stitch together IP addresses in a script processor
 
@@ -499,3 +786,31 @@ POST _ingest/pipeline/_simulate
 ```
 
 In this example, `{{tags.0}}` retrieves the first element of the `tags` array (`"cool-host"`) and assigns it to the `host.alias` field. This approach is necessary when you want to extract a specific value from an array for use elsewhere in your document. Using the correct index ensures you get the intended value, and this pattern works for any array field in your source data.
+
+#### Work with JSON as value of fields
+
+It is possible to work with json string as value of a field for example to set the `original` field value with the json of `_source`: We are leveraging a `mustache`  function here.
+
+```json
+POST _ingest/pipeline/_simulate
+{
+  "docs": [
+    {
+      "_source": {
+        "foo": "bar",
+        "key": 123
+      }
+    }
+  ],
+  "pipeline": {
+    "processors": [
+      {
+        "set": {
+          "field": "original",
+          "value": "{{#toJson}}_source{{/toJson}}"
+        }
+      }
+    ]
+  }
+}
+```
