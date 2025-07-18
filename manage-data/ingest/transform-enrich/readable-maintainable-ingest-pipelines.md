@@ -14,115 +14,116 @@ There are many ways to achieve similar results when creating ingest pipelines, w
 This guide does not provide guidance on optimizing for ingest pipeline performance.
 :::
 
-## Write concise `if` conditional statements
+## Access fields
 
-Use `if` statements to ensure that an ingest pipeline processor is only applied when specific conditions are met.
+When creating ingest pipelines, there are are few options for accessing fields in conditional statements and scripts. All formats can be used to reference fields, so choose the one that makes your pipeline easier to read and maintain.
 
-### Accessing fields in conditionals
+| Notation | Example | Notes |
+|---|---|---|
+| Dot notation | `ctx.event.action` | Supported in conditionals and painless scripts. |
+| Square bracket notation | `ctx['event']['action']` | Supported in conditionals and painless scripts. |
+| Mixed dot and bracket notation | `ctx.event['action']` | Supported in conditionals and painless scripts. |
+| Getter | `$('event.action', null);` | Only supported in painless scripts. |
 
-In an ingest pipeline, when working with `if` statements also known as conditionals inside processors. The topic around error processing is a bit more complex, most importantly any errors that are coming from null values, missing keys, missing values, inside the conditional, will lead to an error that is not captured by the `ignore_failure` handler and will exit the pipeline.
+Below are some general guidelines for choosing the right option in a situation.
 
-You can access fields in two ways:
+### Dot notation [dot-notation]
 
-- Dot notation
-- Square bracket notation
+**Benefits:**
+* Clean and easy to read.
+* Supports null safety operations `?`.
+  For example, ...
 
-For example:
+**Limitations**
+* Does not support field names that contain a `.` or any special characters such as `@`.
+  Use [Bracket notation](#bracket-notation) instead.
 
-- `ctx.event.action`
+### Bracket notation [bracket-notation]
 
-is equivalent to:
+**Benefits:**
+* Supports special characters such as `@` in the field name.
+  For example, if there's a field name called `has@!%&chars`, you would use `ctx['has@!%&chars']`.
+* Supports field names that contain `.`.
+  For example, if there's a field named `foo.bar`, if you used `ctx.foo.bar` it will try to access the field `bar` in the object `foo` in the object `ctx`. If you used `ctx['foo.bar']` it can access the field directly.
 
-- `ctx['event']['action']`
+**Limitations:**
+* Slightly more verbose than dot notation.
+* No support for null safety operations `?`.
+  Use [Dot notation](#dot-notation) instead.
 
-Both notations can be used to reference fields, so choose the one that makes your pipeline easier to read and maintain.
+### Mixed dot and bracket notation
 
-:::{warn}
-No support for null safety operations `?`
-{warn}
+**Benefits:**
+* You can also mix dot notation and bracket notation to take advantage of the benefits of both formats.
+  For example, you could use `ctx.my.nested.object['has@!%&chars']`. Then you can use the `?` operator on the fields using dot notation while still accessing a field with a name that contains special characters: `ctx.my?.nested?.object['has@!%&chars']`.
 
-Use the bracket notation when you have special characters such as `@` in the field name, or a `.` in the field name. As an example:
+**Limitations:**
+* Slightly more difficult to read.
 
-- field_name: `demo.cool.stuff`
+### Getter
 
-using:
+Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline.
 
-`ctx.demo.cool.stuff` it would try to access the field `stuff` in the object `cool` in the object `demo`.
+% For example, take the following input:
+%
+% ```json
+% {
+%   "_source": {
+%        "user_name": "philipp"
+%   }
+% }
+% ```
+%
+% When you want to set the `user.name` field with a script:
+%
+% - `ctx.user.name = ctx.user_name`
+%
+% This works as long as `user_name` is populated. If it is null you will get `null` as value. Additionally, when the `user` object does not exist, it will error because Java needs you to define the `user` object first before adding a key `name` into it. We cover the `new HashMap()` further down.
+%
+% This is one of the alternatives to get it working when you only want to set it, if it is not null
+%
+% ```painless
+% if (ctx.user_name != null) {
+%    ctx.user = new HashMap();
+%    ctx.user.name = ctx.user_name;
+% }
+% ```
+%
+% This works fine, as you now check for null.
+%
+% However there is also an easier to write and maintain alternative available:
+%
+% - `ctx.user.name = $('user_name', null);`
+%
+% This $('field', 'fallback') allows you to specify the field without the `CTX` for walking. You can even supply % `$('this.very.nested.field.is.super.far.away', null)` when you need to. The fallback is in case the field is % null. This comes in very handy when needing to do certain manipulation of data. Let's say you want to lowercase all the field names, you can simply write this now:
+%
+% - `ctx.user.name = $('user_name','').toLowerCase();`
+%
+% You see that I switched up the null value to an empty String. Since the String has the `toLowerCase()` function. This of course works with all types. Bit of a silly thing, since you could simply write `object.abc` as the field value. As an example you can see that we can even create a map, list, array, whatever you want.
+%
+% - `if ($('object', {}).containsKey('abc')){}`
+%
+% One common thing I use it for is when dealing with numbers and casting. The field specifies the usage in `%`, however Elasticsearch doesn't like this, or better to say Kibana renders % as `0-1` for `0%-100%` and not `0-100`. `100` is equal to `10.000%`
+%
+% - field: `cpu_usage = 100.00`
+% - `ctx.cpu.usage = $('cpu_usage',0.0)/100`
+%
+% This allows me to always set the `cpu.usage` field and not to worry about it, have an always working division. One other way to leverage this, in a simpler script is like this, but most scripts are rather complex so this is not that often applicable.
+%
+% ```json
+% {
+%   "script": {
+%     "source": "ctx.abc = ctx.def",
+%     "if": "ctx.def != null"
+%   }
+% }
+% ```
 
-using:
+## Write concise conditionals (`if` statements) [conditionals]
 
-`ctx['demo.cool.stuff']` it can access the field directly.
+Use conditionals (`if` statements) to ensure that an ingest pipeline processor is only applied when specific conditions are met.
 
-You can also mix and match both worlds when needed:
-
-- field_name: `my.nested.object.has@!%&chars`
-
-Proper way: `ctx.my.nested.object['has@!%&chars']`
-
-You can even, partially use the `?` operator:
-
-- `ctx.my?.nested?.object['has@!%&chars']`
-
-But it will error if object is `null`. To be a 100% on the safe side you need to write the following statement:
-
-- `ctx.my?.nested?.object != null && ctx.my.nested.object['has@!%&chars'] == ...`
-
-#### Accessing fields in a script
-
-Within a script there are the same two possibilities to access fields as above. As well as the new `getter`. This only works in the painless scripts in an ingest pipeline. Take the following input:
-
-```json
-{
-  "_source": {
-       "user_name": "philipp"
-  }
-}
-```
-
-When you want to set the `user.name` field with a script:
-
-- `ctx.user.name = ctx.user_name`
-
-This works as long as `user_name` is populated. If it is null you will get `null` as value. Additionally, when the `user` object does not exist, it will error because Java needs you to define the `user` object first before adding a key `name` into it. We cover the `new HashMap()` further down.
-
-This is one of the alternatives to get it working when you only want to set it, if it is not null
-
-```painless
-if (ctx.user_name != null) {
-   ctx.user = new HashMap();
-   ctx.user.name = ctx.user_name;
-}
-```
-
-This works fine, as you now check for null.
-
-However there is also an easier to write and maintain alternative available:
-
-- `ctx.user.name = $('user_name', null);`
-
-This $('field', 'fallback') allows you to specify the field without the `CTX` for walking. You can even supply `$('this.very.nested.field.is.super.far.away', null)` when you need to. The fallback is in case the field is null. This comes in very handy when needing to do certain manipulation of data. Let's say you want to lowercase all the field names, you can simply write this now:
-
-- `ctx.user.name = $('user_name','').toLowerCase();`
-
-You see that I switched up the null value to an empty String. Since the String has the `toLowerCase()` function. This of course works with all types. Bit of a silly thing, since you could simply write `object.abc` as the field value. As an example you can see that we can even create a map, list, array, whatever you want.
-
-- `if ($('object', {}).containsKey('abc')){}`
-
-One common thing I use it for is when dealing with numbers and casting. The field specifies the usage in `%`, however Elasticsearch doesn't like this, or better to say Kibana renders % as `0-1` for `0%-100%` and not `0-100`. `100` is equal to `10.000%`
-
-- field: `cpu_usage = 100.00`
-- `ctx.cpu.usage = $('cpu_usage',0.0)/100`
-
-This allows me to always set the `cpu.usage` field and not to worry about it, have an always working division. One other way to leverage this, in a simpler script is like this, but most scripts are rather complex so this is not that often applicable.
-
-```json
-{
-  "script": {
-    "source": "ctx.abc = ctx.def"
-    "if": "ctx.def != null"
-  }
-}
-```
+% In an ingest pipeline, when working with conditionals inside processors. The topic around error processing is a bit more complex, most importantly any errors that are coming from null values, missing keys, missing values, inside the conditional, will lead to an error that is not captured by the `ignore_failure` handler and will exit the pipeline.
 
 ### Avoid excessive OR conditions
 
@@ -146,7 +147,9 @@ When using the [boolean OR operator](elasticsearch://reference/scripting-languag
 This example only checks for exact matches. Do not use this approach if you need to check for partial matches.
 :::
 
-### Use null safe operators `?`
+### Use null safe operators (`?.`) [null-safe-operators]
+
+Anticipate potential problems with the data, and use the [null safe operator](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) (`?.`) to prevent data from being processed incorrectly.
 
 In simplest case the `ignore_missing` parameter is available in most processors to handle fields without values. Or the `ignore_failure` parameter to let the processor fail without impacting the pipeline you  but sometime you will need to use  the [null safe operator `?.`](elasticsearch://reference/scripting-languages/painless/painless-operators-reference.md#null-safe-operator) to check if a field exists and is not `null`.
 
