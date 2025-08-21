@@ -103,7 +103,7 @@ Regardless of the chosen architecture, add a `remove` processor at the end of th
 
 When Logstash is added to the architecture we must add a timestamp, this can only be done by using Ruby and the simplest form is this:
 
-```logstash
+```
 ruby {
   code => "event.set('[_tmp][logstash_seen]', Time.now());"
 }
