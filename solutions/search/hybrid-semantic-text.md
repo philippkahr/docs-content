@@ -1,10 +1,12 @@
 ---
-navigation_title: "Hybrid search with `semantic_text`"
+navigation_title: Hybrid search with `semantic_text`
 mapped_pages:
   - https://www.elastic.co/guide/en/elasticsearch/reference/current/semantic-text-hybrid-search.html
 applies_to:
   stack:
   serverless:
+products:
+  - id: elasticsearch
 ---
 
 # Hybrid search with `semantic_text` [semantic-text-hybrid-search]
@@ -101,7 +103,7 @@ POST _tasks/<task_id>/_cancel
 
 ## Perform hybrid search [hybrid-search-perform-search]
 
-After reindexing the data into the `semantic-embeddings` index, you can perform hybrid search to combine semantic and lexical search results. Choose between [retrievers](retrievers-overview.md) or [{{esql}}](/explore-analyze/query-filter/languages/esql.md) syntax to execute the query.
+After reindexing the data into the `semantic-embeddings` index, you can perform hybrid search to combine semantic and lexical search results. Choose between [retrievers](retrievers-overview.md) or [{{esql}}](elasticsearch://reference/query-languages/esql.md) syntax to execute the query.
 
 ::::{tab-set}
 :group: query-type

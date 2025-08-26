@@ -1,15 +1,16 @@
 ---
-navigation_title: "Enable on ECK"
+navigation_title: Enable on ECK
 mapped_pages:
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_how_it_works.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_when_to_use_it.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_override_the_beats_pod_template.html
   - https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_connect_to_an_external_monitoring_elasticsearch_cluster.html
-
 applies_to:
   deployment:
     eck: all
+products:
+  - id: cloud-kubernetes
 ---
 
 # Enable stack monitoring on ECK deployments [k8s-stack-monitoring]
@@ -37,7 +38,7 @@ However, for maximum efficiency and minimizing resource consumption, or advanced
 
 To enable stack monitoring, reference the monitoring {{es}} cluster in the `spec.monitoring` section of their specification. 
 
-The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one. To learn how to connect an external monitoring cluster, refer to [Connect ot an external monitoring {{es}} cluster](#k8s_connect_to_an_external_monitoring_elasticsearch_cluster).
+The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one. To learn how to connect an external monitoring cluster, refer to [Connect to an external monitoring {{es}} cluster](#k8s_connect_to_an_external_monitoring_elasticsearch_cluster).
 
 The following example shows how {{stack}} components can be configured to send their monitoring data to a separate {{es}} cluster in the same Kubernetes cluster. 
 
@@ -160,7 +161,7 @@ kind: Secret
 metadata:
   name: monitoring-metrics-es-ref
 stringData:
-  url: https://mon1.es.abcd-42.xyz.elastic-cloud.com:9243
+  url: <ELASTIC_CLOUD_URL>:9243
   username: monitoring-user
   password: <password>
 ```

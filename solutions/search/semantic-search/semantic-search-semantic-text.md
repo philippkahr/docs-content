@@ -1,10 +1,12 @@
 ---
-navigation_title: "Semantic search with `semantic_text`"
+navigation_title: Semantic search with `semantic_text`
 mapped_pages:
   - https://www.elastic.co/guide/en/elasticsearch/reference/current/semantic-search-semantic-text.html
 applies_to:
   stack:
   serverless:
+products:
+  - id: elasticsearch
 ---
 
 # Semantic search with `semantic_text` [semantic-search-semantic-text]
@@ -98,7 +100,7 @@ POST _tasks/<task_id>/_cancel
 
 ## Semantic search [semantic-text-semantic-search]
 
-After the data has been indexed with the embeddings, you can query the data using semantic search. Choose between [Query DSL](/explore-analyze/query-filter/languages/querydsl.md) or [{{esql}}](/explore-analyze/query-filter/languages/esql.md) syntax to execute the query.
+After the data has been indexed with the embeddings, you can query the data using semantic search. Choose between [Query DSL](/explore-analyze/query-filter/languages/querydsl.md) or [{{esql}}](elasticsearch://reference/query-languages/esql.md) syntax to execute the query.
 
 ::::{tab-set}
 :group: query-type

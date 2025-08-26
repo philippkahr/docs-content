@@ -1,5 +1,5 @@
 ---
-navigation_title: "LLM Observability"
+navigation_title: LLM Observability
 ---
 
 # LLM Observability
@@ -9,7 +9,7 @@ To keep your LLM-powered applications reliable, efficient, cost-effective, and e
 Elastic’s end-to-end LLM observability is delivered through the following methods:
 
 - Metrics and logs ingestion for LLM APIs (via [Elastic integrations](integration-docs://reference/index.md))
-- APM tracing for LLM Models (via [instrumentation](https://elastic.github.io/opentelemetry/))
+- APM tracing for LLM Models (via [instrumentation](opentelemetry://reference/index.md))
 
 ## Metrics and logs ingestion for LLM APIs (via Elastic integrations)
 
@@ -17,10 +17,11 @@ Elastic’s LLM integrations now support the most widely adopted models, includi
 
 | **LLM Provider**  | **Metrics** | **Logs** | 
 |--------|------------|------------|
-| [Amazon Bedrock](https://www.elastic.co/guide/en/integrations/current/aws_bedrock.html)| ✅ | ✅ |  
-| [Azure OpenAI](https://www.elastic.co/guide/en/integrations/current/azure_openai.html)| ✅ | ✅ | 
-| [GCP Vertex AI](https://www.elastic.co/guide/en/integrations/current/gcp_vertexai.html) | ✅ | 🚧 | 
-| [OpenAI](https://www.elastic.co/guide/en/integrations/current/openai.html) | ✅| 🚧 | 
+| [Amazon Bedrock](integration-docs://reference/aws_bedrock.md)| ✅ | ✅ |  
+| [Azure OpenAI](integration-docs://reference/azure_openai.md)| ✅ | ✅ | 
+| [GCP Vertex AI](integration-docs://reference/gcp_vertexai.md) | ✅ | ✅ | 
+| [OpenAI](integration-docs://reference/openai.md) | ✅| 🚧 | 
+| [Azure AI Foundry](integration-docs://reference/azure_ai_foundry.md) | ✅| ✅ | 
 
 ## APM tracing for LLM models (via instrumentation)
 
@@ -32,11 +33,11 @@ You can instrument the application with one of the following Elastic Distributio
 - [Node.js](https://github.com/elastic/elastic-otel-node)
 - [Java](https://github.com/elastic/elastic-otel-java)
 
-EDOT includes many types of LLM instrumentation. This [table](https://elastic.github.io/opentelemetry/use-cases/llm/#supported-technologies) lists the supported technologies.
+EDOT includes many types of LLM instrumentation. This [table](opentelemetry://reference/use-cases/llms/index.md#supported-technologies) lists the supported technologies.
 
 ### Getting started
 
-Check [these instructions](https://elastic.github.io/opentelemetry/use-cases/llm/) on how to setup and collect OpenTelemetry data for your LLM applications.
+Check [these instructions](opentelemetry://reference/use-cases/llms/index.md) on how to setup and collect OpenTelemetry data for your LLM applications.
 
 ## Use cases
 
